@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --grain-opacity: 0.05;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Jost', system-ui, sans-serif;
+  }
+
+  html,
+  body {
+    background: #050604;
+    margin: 0;
+  }
+
+  body {
+    @apply text-cream-100 antialiased;
+    font-family: var(--font-body);
+    font-feature-settings: 'kern' 1, 'liga' 1;
+  }
+}
+
+@layer components {
+  /* Warm film-grain overlay that keeps large flat dark areas from banding. */
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
