@@ -73,7 +73,13 @@ export const LABEL_THETA = Math.asin(LABEL.w / 2 / LABEL.radius);
 export const CAP = { x: 355, w: 245, top: 40, bottom: 108 };
 export const CAP_R = (CAP.w / 2) * PX;
 export const CAP_H = (CAP.bottom - CAP.top) * PX;
-export const CAP_Y = ly((CAP.top + CAP.bottom) / 2);
+/**
+ * Closed, the cap sits down over the neck like a real screw cap: its rim
+ * reaches just past the glass lip (rows 112–135, radius 118 < cap radius
+ * 122.5), so no glass shows between cap and neck.
+ */
+const CAP_SEAT_ROW = 138;
+export const CAP_Y = ly(CAP_SEAT_ROW) + CAP_H / 2;
 
 /** Top of the neck (where the stream enters). */
 export const MOUTH_Y = ly(112);
