@@ -1,69 +1,25 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Environment, Lightformer, useTexture } from '@react-three/drei';
+import { Environment, Lightformer } from '@react-three/drei';
 import * as THREE from 'three';
 import { createBeanGeometry } from '@/three/beanGeometry';
 import { buildBeanMaps, createBeanMaterial } from '@/three/beanTextures';
-import { lerp, mulberry32, smoothstep } from '@/three/math';
-import { goldGlow, radialTexture, softShadow } from '@/three/textures';
-import { TEASER_IMG } from './assets';
-import { BASE, CAP_RECT, cutoutBottle } from './cutout';
+import { mulberry32 } from '@/three/math';
+import { goldGlow } from '@/three/textures';
+import Bottle3D, { BOTTLE_BASE_Y, coffeeLevelY } from './Bottle3D';
+import { MOUTH_Y } from './bottleModel';
+import { loopTime, streamState } from './timeline';
 
-const IMG_W = 960;
-const IMG_H = 1280;
-
-// Bottle billboard placement (world units).
-const BOTTLE_H = 2.95;
-const BOTTLE_W = BOTTLE_H * (IMG_W / IMG_H);
-const BOTTLE_Y = -0.22;
-
-/** teaser.webp pixel → world position on the bottle plane. */
-const px2x = (px: number) => (px / IMG_W - 0.5) * BOTTLE_W;
-const py2y = (py: number) => BOTTLE_Y + (0.5 - py / IMG_H) * BOTTLE_H;
-
-const POUR_X = px2x(477);
-const MOUTH_Y = py2y(112);
-const MOUTH_R = (px2x(588) - px2x(368)) / 2;
-
+/** Where the pour starts (above the top of the frame). */
 const STREAM_TOP = 3.4;
 
-// Coffee level in teaser.webp rows: bottom of the liquid, where the shoulder
-// starts narrowing, and the full line in the neck.
-const LIQUID = { bottom: 1195, shoulder: 330, full: 205 };
-
-// One loop of the teaser, in seconds.
-const CYCLE = 13;
-const K = {
-  fadeIn: 0.6,
-  unscrewStart: 0.8,
-  unscrewEnd: 2.0,
-  liftEnd: 3.0,
-  pourStart: 2.6,
-  dropTime: 0.5,
-  fillEnd: 8.8,
-  pourStop: 8.9,
-  returnStart: 9.5,
-  returnEnd: 10.6,
-  screwEnd: 11.5,
-  fadeOutStart: 12.3,
-};
-
-/** Bottle visibility: fades in empty at the start of a loop, out (full) at the end. */
-const bottleOpacity = (t: number) => smoothstep(0, K.fadeIn, t) * (1 - smoothstep(K.fadeOutStart, CYCLE, t));
-
-/**
- * Coffee level as a teaser.webp row. Constant flow, so the wide body fills
- * slowly and the narrow shoulder and neck catch up quickly at the end.
- */
-function fillRow(t: number) {
-  const f = smoothstep(K.pourStart + K.dropTime, K.fillEnd, t);
-  if (f < 0.85) return lerp(LIQUID.bottom, LIQUID.shoulder, f / 0.85);
-  return lerp(LIQUID.shoulder, LIQUID.full, (f - 0.85) / 0.15);
-}
-
-useTexture.preload(TEASER_IMG);
+/** Below this width/height the teaser switches to its stacked phone layout (matches Teaser.tsx). */
+export const PORTRAIT_ASPECT = 0.8;
 
 export default function TeaserScene() {
+  const { size } = useThree();
+  const mobile = size.width < 640;
+
   return (
     <>
       {/* Same studio lighting rig as the home page hero beans (StoryScene). */}
@@ -72,6 +28,9 @@ export default function TeaserScene() {
         <Lightformer form="ring" intensity={2.2} color="#d4af6a" position={[0, 2, -6]} scale={5} target={[0, 0, 0]} />
         <Lightformer form="rect" intensity={1.2} color="#bcd6ff" position={[-6, 1, 2]} scale={[2, 5, 1]} target={[0, 0, 0]} />
         <Lightformer form="rect" intensity={1.5} color="#ffd9a3" position={[6, 0, 3]} scale={[2, 4, 1]} target={[0, 0, 0]} />
+        {/* Tall softbox strips: the bright vertical highlights that make glass read as glass. */}
+        <Lightformer form="rect" intensity={5} color="#fff6ea" position={[-3, 0.5, 4]} scale={[0.5, 7, 1]} target={[0, 0, 0]} />
+        <Lightformer form="rect" intensity={3} color="#ffe9cc" position={[3.5, 0.5, 3.5]} scale={[0.4, 7, 1]} target={[0, 0, 0]} />
       </Environment>
       <ambientLight intensity={0.3} color="#fff4e6" />
       <hemisphereLight color="#fff3db" groundColor="#120b05" intensity={0.4} />
@@ -81,15 +40,65 @@ export default function TeaserScene() {
       <pointLight position={[0, -2, 3]} intensity={1} color="#c9a04e" />
       <fog attach="fog" args={['#040f09', 8, 17]} />
 
+      <Backdrop />
       <CameraFit />
       <BackGlow />
       <FloatingBeans />
       <PourStream />
-      <BottleBillboard />
-      <Mouth />
+      <Bottle3D mobile={mobile} />
       <Dust />
     </>
   );
+}
+
+/**
+ * The home page's forest-green backdrop, painted into the 3D scene itself
+ * (not just behind the canvas) so the glass refracts it like a real
+ * background.
+ */
+function Backdrop() {
+  const { scene } = useThree();
+  const tex = useMemo(() => {
+    const w = 512;
+    const h = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#020504';
+    ctx.fillRect(0, 0, w, h);
+    // radial-gradient(ellipse 80% 60% at 50% 38%, …) — same as the hero.
+    ctx.save();
+    ctx.translate(w * 0.5, h * 0.38);
+    ctx.scale(w * 0.8, h * 0.6);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    g.addColorStop(0, '#0d2818');
+    g.addColorStop(0.45, '#071a10');
+    g.addColorStop(0.78, '#030a06');
+    g.addColorStop(1, '#020504');
+    ctx.fillStyle = g;
+    ctx.fillRect(-1, -1, 2, 2);
+    ctx.restore();
+    // Soft forest glow, lower right.
+    const f = ctx.createRadialGradient(w * 0.92, h * 0.78, 0, w * 0.92, h * 0.78, w * 0.35);
+    f.addColorStop(0, 'rgba(45,81,56,0.22)');
+    f.addColorStop(1, 'rgba(45,81,56,0)');
+    ctx.fillStyle = f;
+    ctx.fillRect(0, 0, w, h);
+    const t = new THREE.CanvasTexture(canvas);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+
+  useEffect(() => {
+    const prev = scene.background;
+    scene.background = tex;
+    return () => {
+      scene.background = prev;
+      tex.dispose();
+    };
+  }, [scene, tex]);
+  return null;
 }
 
 /**
@@ -106,14 +115,6 @@ function CameraFit() {
   return null;
 }
 
-/** Below this width/height the teaser switches to its stacked phone layout (matches Teaser.tsx). */
-export const PORTRAIT_ASPECT = 0.8;
-
-/** Seconds into the current loop. */
-// `?t=5` starts the loop 5 s in — handy for jumping straight to the pour.
-const START_OFFSET = Number(new URLSearchParams(window.location.search).get('t')) || 0;
-const loopTime = (t: number) => (t + START_OFFSET) % CYCLE;
-
 function BackGlow() {
   const tex = useMemo(() => goldGlow(), []);
   return (
@@ -122,239 +123,6 @@ function BackGlow() {
       <meshBasicMaterial map={tex} transparent opacity={0.22} depthWrite={false} blending={THREE.AdditiveBlending} />
     </mesh>
   );
-}
-
-/**
- * The teaser.webp bottle, drawn so it can be shown filling: above the coffee
- * line the dark liquid is turned see-through (empty glass keeps only its
- * highlights and edges), below it the original photo shows through, and the
- * label always stays solid. Works in teaser.webp pixel space.
- */
-const bodyFrag = /* glsl */ `
-  uniform sampler2D map;
-  uniform float uFillRow;
-  uniform float uTime;
-  uniform float uPour;
-  uniform float uOpacity;
-  varying vec2 vUv;
-
-  const vec2 IMG = vec2(960.0, 1280.0);
-
-  float labelMask(vec2 px) {
-    float u = (px.x - 477.0) / 152.0;
-    float arch = 70.0 * u * u;
-    float inX = step(325.0, px.x) * step(px.x, 630.0);
-    float inY = step(432.0 + arch, px.y) * step(px.y, 1088.0 - arch);
-    return inX * inY;
-  }
-
-  void main() {
-    vec4 c = texture2D(map, vUv);
-    vec2 px = vec2(vUv.x, 1.0 - vUv.y) * IMG;
-    vec3 col = c.rgb;
-    float alpha = c.a;
-
-    if (labelMask(px) < 0.5 && px.y < ${LIQUID.bottom}.0) {
-      // Liquid surface: gentle slosh, plus ripples where the stream lands.
-      float hit = exp(-pow((px.x - 477.0) / 45.0, 2.0));
-      float surface = uFillRow
-        + sin(px.x * 0.045 + uTime * 3.0) * 1.6
-        + hit * uPour * (3.0 + sin(uTime * 15.0) * 2.5);
-
-      if (px.y < surface) {
-        // Empty glass: dark coffee becomes see-through, reflections and the
-        // silhouette edge stay.
-        float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
-        float shine = smoothstep(0.015, 0.22, lum);
-        float aL = texture2D(map, vUv - vec2(7.0 / IMG.x, 0.0)).a;
-        float aR = texture2D(map, vUv + vec2(7.0 / IMG.x, 0.0)).a;
-        float edge = 1.0 - min(aL, aR);
-        vec3 glass = mix(vec3(lum) * 1.25 + vec3(0.012, 0.02, 0.016), c.rgb, 0.3);
-        col = mix(glass, vec3(0.42, 0.48, 0.45), edge * 0.35);
-        alpha = c.a * max(0.07 + 0.93 * shine, edge * 0.75);
-      } else if (px.y < surface + 9.0) {
-        // Crema line at the top of the coffee.
-        float k = 1.0 - (px.y - surface) / 9.0;
-        col = mix(col, vec3(0.42, 0.17, 0.035), 0.75 * k);
-      }
-    }
-
-    gl_FragColor = vec4(col, alpha * uOpacity);
-    #include <colorspace_fragment>
-  }
-`;
-
-const bodyVert = /* glsl */ `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-function BottleBillboard() {
-  const src = useTexture(TEASER_IMG);
-  const tex = useMemo(() => cutoutBottle(src.image as HTMLImageElement), [src]);
-  const shadows = useMemo(
-    () => ({
-      soft: softShadow(),
-      contact: radialTexture([
-        [0, 'rgba(0,0,0,0.95)'],
-        [0.55, 'rgba(0,0,0,0.6)'],
-        [1, 'rgba(0,0,0,0)'],
-      ]),
-    }),
-    [],
-  );
-  const bodyMat = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        vertexShader: bodyVert,
-        fragmentShader: bodyFrag,
-        transparent: true,
-        depthWrite: false,
-        uniforms: {
-          map: { value: tex.body },
-          uFillRow: { value: LIQUID.bottom },
-          uTime: { value: 0 },
-          uPour: { value: 0 },
-          uOpacity: { value: 0 },
-        },
-      }),
-    [tex],
-  );
-  useEffect(
-    () => () => {
-      tex.body.dispose();
-      tex.cap.dispose();
-      shadows.soft.dispose();
-      shadows.contact.dispose();
-      bodyMat.dispose();
-    },
-    [tex, shadows, bodyMat],
-  );
-  const softRef = useRef<THREE.MeshBasicMaterial>(null);
-  const contactRef = useRef<THREE.MeshBasicMaterial>(null);
-
-  useFrame((state) => {
-    const time = state.clock.elapsedTime;
-    const t = loopTime(time);
-    const o = bottleOpacity(t);
-    const { head, tail } = streamState(t);
-    const u = bodyMat.uniforms;
-    u.uFillRow.value = fillRow(t);
-    u.uTime.value = time;
-    u.uPour.value = head >= 1 && tail <= 0 ? 1 : 0;
-    u.uOpacity.value = o;
-    if (softRef.current) softRef.current.opacity = 0.75 * o;
-    if (contactRef.current) contactRef.current.opacity = 0.9 * o;
-  });
-
-  // Underside of the glass in world units.
-  const baseY = py2y(BASE.y);
-  const baseW = (BASE.halfW * 2 * BOTTLE_W) / IMG_W;
-
-  return (
-    <group>
-      {/*
-        Two-part grounding shadow, drawn just behind the bottle so its upper
-        half is hidden by the glass: a wide, soft ambient-occlusion pool and
-        a tight, dark contact line right where the glass meets the surface.
-      */}
-      <mesh position={[0, baseY - 0.03, -0.05]} scale={[baseW * 2.3, 0.34, 1]} renderOrder={-1}>
-        <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial ref={softRef} map={shadows.soft} transparent opacity={0} depthWrite={false} fog={false} />
-      </mesh>
-      <mesh position={[0, baseY - 0.005, -0.04]} scale={[baseW * 1.08, 0.075, 1]} renderOrder={-1}>
-        <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial ref={contactRef} map={shadows.contact} transparent opacity={0} depthWrite={false} fog={false} />
-      </mesh>
-      {/* Drawn after the stream (renderOrder) so the label and coffee cover it. */}
-      <mesh position={[0, BOTTLE_Y, 0]} material={bodyMat} renderOrder={2}>
-        <planeGeometry args={[BOTTLE_W, BOTTLE_H]} />
-      </mesh>
-      <Cap map={tex.cap} />
-    </group>
-  );
-}
-
-// The original gold cap from teaser.webp, as its own layer.
-const CAP_W = (CAP_RECT.w / IMG_W) * BOTTLE_W;
-const CAP_PLANE_H = (CAP_RECT.h / IMG_H) * BOTTLE_H;
-const CAP_X = px2x(CAP_RECT.x + CAP_RECT.w / 2);
-const CAP_Y = py2y(CAP_RECT.y + CAP_RECT.h / 2);
-
-/** Twists loose, lifts off for the pour, then drops back and tightens. */
-function Cap({ map }: { map: THREE.Texture }) {
-  const ref = useRef<THREE.Mesh>(null);
-  const matRef = useRef<THREE.MeshBasicMaterial>(null);
-
-  useFrame((state) => {
-    const m = ref.current;
-    if (!m) return;
-    const t = loopTime(state.clock.elapsedTime);
-
-    const unscrew = smoothstep(K.unscrewStart, K.unscrewEnd, t);
-    const lift = smoothstep(K.unscrewEnd - 0.2, K.liftEnd, t);
-    const back = smoothstep(K.returnStart, K.returnEnd, t);
-    const screw = smoothstep(K.returnEnd, K.screwEnd, t);
-
-    // Off-screen height while the pour is running.
-    const away = 3.6;
-    // Small back-and-forth rock while it's being twisted.
-    const twisting = (t < K.returnStart ? unscrew * (1 - unscrew) : screw * (1 - screw)) * 4;
-    let y: number;
-    let tilt: number;
-    if (t < K.returnStart) {
-      y = CAP_Y + unscrew * 0.05 + lift * lift * away;
-      tilt = lift * 0.35;
-    } else {
-      y = lerp(CAP_Y + 0.05 + away, CAP_Y + 0.05, back) - screw * 0.05;
-      tilt = (1 - back) * 0.35;
-    }
-    m.position.set(CAP_X + tilt * 0.3, y, 0.3);
-    m.rotation.z = -tilt + Math.sin(t * 22) * 0.035 * twisting;
-    if (matRef.current) matRef.current.opacity = bottleOpacity(t);
-  });
-
-  return (
-    <mesh ref={ref} position={[CAP_X, CAP_Y, 0.3]} renderOrder={3}>
-      <planeGeometry args={[CAP_W, CAP_PLANE_H]} />
-      <meshBasicMaterial ref={matRef} map={map} transparent opacity={0} toneMapped={false} depthWrite={false} fog={false} />
-    </mesh>
-  );
-}
-
-/** Thin glass lip on the open neck once the cap is off. */
-function Mouth() {
-  const ref = useRef<THREE.Mesh>(null);
-  useFrame((state) => {
-    // Only while the cap is away; it covers the neck the rest of the time.
-    const t = loopTime(state.clock.elapsedTime);
-    if (ref.current) ref.current.visible = t > K.unscrewEnd && t < K.returnEnd;
-  });
-  return (
-    <mesh ref={ref} position={[POUR_X, MOUTH_Y + 0.012, 0]} rotation={[-Math.PI / 2 + 0.2, 0, 0]} renderOrder={3}>
-      <torusGeometry args={[MOUTH_R * 0.95, 0.022, 12, 96]} />
-      <meshPhysicalMaterial
-        color="#2a241c"
-        metalness={0}
-        roughness={0.08}
-        clearcoat={1}
-        clearcoatRoughness={0.05}
-        envMapIntensity={2}
-        transparent
-        opacity={0.85}
-      />
-    </mesh>
-  );
-}
-
-/** 0..1 how far the front of the stream has fallen, and how far its tail has. */
-function streamState(t: number) {
-  const head = smoothstep(K.pourStart, K.pourStart + K.dropTime, t);
-  const tail = smoothstep(K.pourStop, K.pourStop + K.dropTime, t);
-  return { head, tail };
 }
 
 const streamVert = /* glsl */ `
@@ -384,7 +152,7 @@ const streamVert = /* glsl */ `
     float twist = 0.16 * sin(y * 2.4 + uTime * 5.0);
     vec3 p = vec3(position.x * r * (1.0 + twist), y, position.z * r * (1.0 - twist));
     // Gentle sway up top, pinned where it enters the bottle.
-    p.x += (sin(y * 1.6 - uTime * 2.2) * 0.014 + sin(y * 4.0 + uTime * 5.0) * 0.005) * smoothstep(${MOUTH_Y.toFixed(3)}, uTop, y);
+    p.x += (sin(y * 1.6 - uTime * 2.2) * 0.014 + sin(y * 4.0 + uTime * 5.0) * 0.005) * smoothstep(${(BOTTLE_BASE_Y + MOUTH_Y).toFixed(3)}, uTop, y);
 
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     vNormal = normalize(normalMatrix * normalize(vec3(position.x, 0.0, position.z)));
@@ -426,7 +194,7 @@ const streamFrag = /* glsl */ `
     col += vec3(1.0, 0.8, 0.55) * spec * 0.9;
     col += vec3(0.35, 0.12, 0.02) * pow(1.0 - facing, 3.0) * 0.5;
 
-    gl_FragColor = vec4(col, mix(0.82, 0.97, facing));
+    gl_FragColor = vec4(col, 1.0);
     #include <colorspace_fragment>
   }
 `;
@@ -440,14 +208,12 @@ function PourStream() {
       new THREE.ShaderMaterial({
         vertexShader: streamVert,
         fragmentShader: streamFrag,
-        transparent: true,
-        depthWrite: false,
         uniforms: {
           uTime: { value: 0 },
           uHead: { value: 0 },
           uTail: { value: 0 },
           uTop: { value: STREAM_TOP },
-          uBottom: { value: py2y(LIQUID.bottom) },
+          uBottom: { value: coffeeLevelY(0) },
         },
       }),
     [],
@@ -470,15 +236,13 @@ function PourStream() {
     u.uHead.value = head * 1.02;
     u.uTail.value = tail * 1.02;
     // Lands on the rising coffee surface inside the bottle.
-    u.uBottom.value = py2y(fillRow(t)) - 0.01;
+    u.uBottom.value = coffeeLevelY(t) - 0.01;
     if (meshRef.current) meshRef.current.visible = head > 0 && tail < 1;
   });
 
-  // Just behind the bottle plane: visible through the empty glass, hidden by
-  // the label and by the coffee once it's below the surface.
-  return (
-    <mesh ref={meshRef} geometry={geo} material={material} position={[POUR_X, 0, -0.06]} renderOrder={1} frustumCulled={false} />
-  );
+  // Opaque, so the glass's transmission pass refracts it: it's seen falling
+  // through the neck inside the bottle, and disappears into the coffee.
+  return <mesh ref={meshRef} geometry={geo} material={material} frustumCulled={false} />;
 }
 
 /**
