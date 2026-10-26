@@ -8,6 +8,11 @@ empty, the cap twists off, cold brew pours in and fills it, the cap goes back
 on — with 3D roasted beans floating around and the "Coffee Science — Coming
 Soon" title.
 
+## Live
+
+https://vaishnavianantkamal-dev.github.io/Teaser/ — rebuilt and redeployed automatically on every push to `main`
+(`.github/workflows/deploy.yml`).
+
 ## Quick look (no install)
 
 Open **`standalone/teaser.html`** in a browser — it's one self-contained file
