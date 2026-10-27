@@ -64,6 +64,7 @@ export default function Teaser() {
           <h1 className="whitespace-nowrap font-serif text-[clamp(2rem,9.5vw,4rem)] font-light leading-none text-cream-50">
             Coffee <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-gold-300">Science</span>
           </h1>
+          <p className="text-[10px] uppercase tracking-[0.4em] text-gold-400/80">Coffee Without Compromise</p>
         </div>
 
         <div className="absolute inset-y-0 left-0 hidden w-1/2 items-center justify-end pr-[clamp(6rem,11vw,12rem)] [@media(min-aspect-ratio:4/5)]:flex">
@@ -86,7 +87,7 @@ export default function Teaser() {
               Science
             </p>
             <p className="mt-4 flex items-center gap-3 text-[11px] uppercase tracking-[0.5em] text-gold-400/80">
-              Without Compromise
+              Coffee Without Compromise
               <span className="h-px w-10 bg-gold-400/60" />
             </p>
           </div>
