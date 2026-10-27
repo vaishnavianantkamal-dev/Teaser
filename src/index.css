@@ -35,6 +35,29 @@
   }
 }
 
+/*
+ * Tagline: gold lettering with a band of light sweeping across it, a soft
+ * gold glow, and a shadow to lift it off the stone.
+ */
+.tagline-shine {
+  background: linear-gradient(100deg, #c9a04e 0%, #e2c88d 38%, #fff6dc 50%, #e2c88d 62%, #c9a04e 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 10px rgba(212, 175, 106, 0.35)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.85));
+  animation: tagline-shine 3.2s ease-in-out infinite;
+}
+
+@keyframes tagline-shine {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -20% 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -2,7 +2,7 @@ import { Suspense, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { PerformanceMonitor } from '@react-three/drei';
 import { LOGO_IMG } from './assets';
-import TeaserScene from './TeaserScene';
+import TeaserScene, { taglineEl, taglineTopEl } from './TeaserScene';
 
 // Wide layout from 4:5 up (matches PORTRAIT_ASPECT in TeaserScene).
 const MAX_DPR = 1.75;
@@ -63,7 +63,6 @@ export default function Teaser() {
           <h1 className="whitespace-nowrap pb-1 font-title text-[clamp(2rem,9.5vw,4rem)] font-medium leading-none text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-gold-300">
             Coffee Science
           </h1>
-          <p className="text-[10px] uppercase tracking-[0.4em] text-gold-400/80">Something Brewing</p>
         </div>
 
         <div className="absolute inset-y-0 left-0 hidden w-1/2 items-center justify-end pr-[clamp(6rem,11vw,12rem)] [@media(min-aspect-ratio:4/5)]:flex">
@@ -74,35 +73,50 @@ export default function Teaser() {
           </div>
         </div>
         <div className="absolute inset-y-0 right-0 hidden w-1/2 items-center justify-start pl-[clamp(6rem,11vw,12rem)] [@media(min-aspect-ratio:4/5)]:flex">
-          <div className="relative flex flex-col items-start animate-fade-up" style={{ animationDelay: '0.5s' }}>
+          <div className="flex flex-col items-start animate-fade-up" style={{ animationDelay: '0.5s' }}>
             <p
               aria-hidden
               className="pb-[0.12em] font-title text-[clamp(3.5rem,min(8.2vw,17vh),9rem)] font-medium leading-[0.9] text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-gold-300 drop-shadow-[0_6px_30px_rgba(0,0,0,0.7)]"
             >
               Science
             </p>
-            <p className="absolute left-0 top-full mt-3 flex items-center gap-3 whitespace-nowrap text-[11px] uppercase tracking-[0.5em] text-gold-400/80">
-              Something Brewing
-              <span className="h-px w-10 bg-gold-400/60" />
-            </p>
           </div>
         </div>
       </div>
 
 
-      {/* Logo, top-left */}
+      {/* Logo, top-left (beans keep clear of it: see logoCorner in TeaserScene) */}
       <div className="absolute left-5 top-5 z-10 sm:left-8 sm:top-7 animate-fade-up">
-        <span className="relative block h-16 w-16 overflow-hidden rounded-full ring-1 ring-gold-400/50 shadow-[0_0_40px_rgba(201,160,78,0.25)] sm:h-20 sm:w-20">
+        <span className="relative block h-20 w-20 overflow-hidden rounded-full ring-1 ring-gold-400/50 shadow-[0_0_40px_rgba(201,160,78,0.25)] sm:h-[104px] sm:w-[104px]">
           <img src={LOGO_IMG} alt="Coffee Science" className="h-full w-full object-cover" />
         </span>
       </div>
 
-      {/* Tagline */}
+      {/* Tagline again, above the bottle, once the cap is back on (below the logo on phones). */}
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-[4vh] z-10 flex flex-col items-center gap-3 animate-fade-up"
-        style={{ animationDelay: '0.6s' }}
+        ref={(el) => {
+          taglineTopEl.current = el;
+        }}
+        className="pointer-events-none absolute inset-x-0 top-[15vh] z-10 flex flex-col items-center gap-2 opacity-0 sm:top-[9vh]"
       >
-        <p className="whitespace-nowrap pl-[0.3em] font-serif text-[clamp(0.75rem,min(1.6vw,3vh),1.35rem)] font-normal uppercase tracking-[0.3em] text-gold-300 sm:pl-[0.55em] sm:tracking-[0.55em]">
+        <p className="tagline-shine whitespace-nowrap pl-[0.25em] font-title text-[clamp(0.85rem,min(1.75vw,3.2vh),1.6rem)] font-semibold uppercase tracking-[0.25em] sm:pl-[0.4em] sm:tracking-[0.4em]">
+          Coffee Without Compromise
+        </p>
+        <div className="h-px w-24 bg-gradient-to-r from-transparent via-gold-400/80 to-transparent" />
+      </div>
+
+      {/*
+        Tagline: rises onto the front of the stone while the coffee pours.
+        Its position and fade are driven from the 3D loop (see TaglineSync in
+        TeaserScene), so it stays on the stone at every screen size.
+      */}
+      <div
+        ref={(el) => {
+          taglineEl.current = el;
+        }}
+        className="pointer-events-none absolute inset-x-0 top-[88%] z-10 flex flex-col items-center gap-2 opacity-0"
+      >
+        <p className="tagline-shine whitespace-nowrap pl-[0.25em] font-title text-[clamp(0.85rem,min(1.75vw,3.2vh),1.6rem)] font-semibold uppercase tracking-[0.25em] sm:pl-[0.4em] sm:tracking-[0.4em]">
           Coffee Without Compromise
         </p>
         <div className="h-px w-24 bg-gradient-to-r from-transparent via-gold-400/80 to-transparent" />

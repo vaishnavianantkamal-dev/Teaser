@@ -8,7 +8,7 @@ import { lerp, mulberry32, smoothstep } from '@/three/math';
 import { goldGlow, radialTexture, softShadow } from '@/three/textures';
 import { TEASER_IMG } from './assets';
 import { BASE, CAP_RECT, cutoutBottle } from './cutout';
-import { CoffeeSwirl, Droplets, Leaves, Stone, type SwirlState } from './scenery';
+import { Droplets, Leaves, Stone } from './scenery';
 
 const IMG_W = 960;
 const IMG_H = 1280;
@@ -24,7 +24,6 @@ const py2y = (py: number) => BOTTLE_Y + (0.5 - py / IMG_H) * BOTTLE_H;
 
 const POUR_X = px2x(477);
 const MOUTH_Y = py2y(112);
-const MOUTH_R = (px2x(588) - px2x(368)) / 2;
 
 const STREAM_TOP = 3.4;
 
@@ -43,23 +42,14 @@ const K = {
   dropTime: 0.5,
   fillEnd: 8.8,
   pourStop: 8.9,
-  returnStart: 9.5,
-  returnEnd: 10.6,
-  screwEnd: 11.5,
+  returnStart: 9.2,
+  returnEnd: 10.1,
+  screwEnd: 10.8,
   fadeOutStart: 12.3,
 };
 
 /** Top of the stone the bottle stands on: the underside of the glass. */
 const STAND_Y = py2y(BASE.y);
-
-/**
- * The coffee swirl: once the bottle is full it rises from the stone and wraps
- * round the bottle while the cap goes back on, then drains away.
- */
-function swirlState(time: number): SwirlState {
-  const t = loopTime(time);
-  return { head: smoothstep(8.7, 10.0, t), tail: smoothstep(11.2, 12.4, t), opacity: bottleOpacity(t) };
-}
 
 /** Bottle visibility: fades in empty at the start of a loop, out (full) at the end. */
 const bottleOpacity = (t: number) => smoothstep(0, K.fadeIn, t) * (1 - smoothstep(K.fadeOutStart, CYCLE, t));
@@ -99,12 +89,11 @@ export default function TeaserScene() {
       <FloatingBeans />
       <PourStream />
       <BottleBillboard />
-      <Mouth />
       <Stone x={POUR_X} topY={STAND_Y} />
       <Leaves x={POUR_X} topY={STAND_Y} />
-      <CoffeeSwirl x={POUR_X} bottom={STAND_Y + 0.12} top={py2y(LIQUID.shoulder) + 0.15} radius={0.72} state={swirlState} />
       <Droplets x={POUR_X} bottom={STAND_Y + 0.15} top={1.3} opacity={(time) => bottleOpacity(loopTime(time))} />
       <Dust />
+      <TaglineSync />
     </>
   );
 }
@@ -122,6 +111,9 @@ function CameraFit() {
   }, [camera, size.width, size.height]);
   return null;
 }
+
+/** Bean radius (× its scale) used to keep beans from overlapping each other, with a little gap. */
+const BEAN_REACH = 0.72;
 
 /** Below this width/height the teaser switches to its stacked phone layout (matches Teaser.tsx). */
 export const PORTRAIT_ASPECT = 0.8;
@@ -142,10 +134,11 @@ function BackGlow() {
 }
 
 /**
- * The teaser.webp bottle, drawn so it can be shown filling: above the coffee
- * line the dark liquid is turned see-through (empty glass keeps only its
- * highlights and edges), below it the original photo shows through, and the
- * label always stays solid. Works in teaser.webp pixel space.
+ * The teaser.webp bottle, drawn so it can be shown filling with milk coffee:
+ * above the coffee line the photo's dark liquid is turned see-through (empty
+ * glass keeps only its highlights and edges), below it the liquid is
+ * recoloured to creamy milk coffee behind the photo's glass reflections, and
+ * the label always stays solid. Works in teaser.webp pixel space.
  */
 const bodyFrag = /* glsl */ `
   uniform sampler2D map;
@@ -178,21 +171,46 @@ const bodyFrag = /* glsl */ `
         + sin(px.x * 0.045 + uTime * 3.0) * 1.6
         + hit * uPour * (3.0 + sin(uTime * 15.0) * 2.5);
 
+      float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+      float aL = texture2D(map, vUv - vec2(7.0 / IMG.x, 0.0)).a;
+      float aR = texture2D(map, vUv + vec2(7.0 / IMG.x, 0.0)).a;
+      float edge = 1.0 - min(aL, aR);
+
       if (px.y < surface) {
         // Empty glass: dark coffee becomes see-through, reflections and the
         // silhouette edge stay.
-        float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
         float shine = smoothstep(0.015, 0.22, lum);
-        float aL = texture2D(map, vUv - vec2(7.0 / IMG.x, 0.0)).a;
-        float aR = texture2D(map, vUv + vec2(7.0 / IMG.x, 0.0)).a;
-        float edge = 1.0 - min(aL, aR);
         vec3 glass = mix(vec3(lum) * 1.25 + vec3(0.012, 0.02, 0.016), c.rgb, 0.3);
         col = mix(glass, vec3(0.42, 0.48, 0.45), edge * 0.35);
         alpha = c.a * max(0.07 + 0.93 * shine, edge * 0.75);
-      } else if (px.y < surface + 9.0) {
-        // Crema line at the top of the coffee.
-        float k = 1.0 - (px.y - surface) / 9.0;
-        col = mix(col, vec3(0.42, 0.17, 0.035), 0.75 * k);
+      } else {
+        // Filled with milk coffee (colours are linear): creamy caramel brown,
+        // shading darker towards the sides so it reads as a round body of
+        // liquid, with slow swirls of milk still settling.
+        float side = (px.x - 477.0) / 190.0;
+        vec3 milk = vec3(0.32, 0.145, 0.058) * (1.0 - 0.6 * side * side) + vec3(0.02, 0.008, 0.003);
+        milk *= 0.92 + 0.1 * sin(px.y * 0.021 + px.x * 0.011 + uTime * 0.8) * sin(px.x * 0.031 - uTime * 0.5);
+        // Seen through ribbed glass. The photo's own ribs barely show through
+        // the pale liquid, so model them: vertical flutes round the bottle
+        // that shade the liquid in their grooves and catch a glint on each
+        // ridge, plus two tall reflections of the studio lights.
+        float ang = asin(clamp(side, -0.999, 0.999));
+        float flute = cos(ang * 22.0);
+        float groove = smoothstep(0.2, 1.0, -flute);
+        float ridge = smoothstep(0.7, 1.0, flute) * (0.4 + 0.6 * abs(side));
+        float lights = exp(-pow((side + 0.56) / 0.07, 2.0)) * 0.9 + exp(-pow((side - 0.64) / 0.045, 2.0)) * 0.55;
+        float shine = smoothstep(0.1, 0.5, lum);
+        col = milk * (1.0 - 0.3 * groove);
+        col += vec3(0.85, 0.9, 0.88) * (lights * 0.45 + ridge * 0.12 + shine * shine * 0.3);
+        col = mix(col, vec3(0.012, 0.022, 0.016) + vec3(lum) * 0.8, edge * 0.7);
+        // Thick, clear glass base under the liquid.
+        float base = smoothstep(1150.0, 1195.0, px.y);
+        col = mix(col, vec3(0.02, 0.03, 0.025) + vec3(0.7, 0.78, 0.74) * shine * 0.7 + milk * 0.25, base * 0.7);
+        if (px.y < surface + 10.0) {
+          // Pale foam line at the top of the milk coffee.
+          float k = 1.0 - (px.y - surface) / 10.0;
+          col = mix(col, vec3(0.6, 0.4, 0.22), 0.8 * k);
+        }
       }
     }
 
@@ -218,6 +236,11 @@ function BottleBillboard() {
       contact: radialTexture([
         [0, 'rgba(0,0,0,0.95)'],
         [0.55, 'rgba(0,0,0,0.6)'],
+        [1, 'rgba(0,0,0,0)'],
+      ]),
+      caustic: radialTexture([
+        [0, 'rgba(255,214,160,1)'],
+        [0.35, 'rgba(214,150,86,0.55)'],
         [1, 'rgba(0,0,0,0)'],
       ]),
     }),
@@ -246,12 +269,15 @@ function BottleBillboard() {
       tex.cap.dispose();
       shadows.soft.dispose();
       shadows.contact.dispose();
+      shadows.caustic.dispose();
       bodyMat.dispose();
     },
     [tex, shadows, bodyMat],
   );
   const softRef = useRef<THREE.MeshBasicMaterial>(null);
   const contactRef = useRef<THREE.MeshBasicMaterial>(null);
+  const glassShadowRef = useRef<THREE.MeshBasicMaterial>(null);
+  const causticRef = useRef<THREE.MeshBasicMaterial>(null);
 
   useFrame((state) => {
     const time = state.clock.elapsedTime;
@@ -265,6 +291,10 @@ function BottleBillboard() {
     u.uOpacity.value = o;
     if (softRef.current) softRef.current.opacity = 0.75 * o;
     if (contactRef.current) contactRef.current.opacity = 0.9 * o;
+    // The caustic only appears once there's liquid in the glass to focus the light.
+    const fill = (LIQUID.bottom - u.uFillRow.value) / (LIQUID.bottom - LIQUID.full);
+    if (glassShadowRef.current) glassShadowRef.current.opacity = 0.5 * o;
+    if (causticRef.current) causticRef.current.opacity = 0.55 * o * (0.25 + 0.75 * fill);
   });
 
   // Underside of the glass in world units.
@@ -285,6 +315,26 @@ function BottleBillboard() {
       <mesh position={[0, baseY - 0.005, -0.04]} scale={[baseW * 1.08, 0.075, 1]} renderOrder={-1}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial ref={contactRef} map={shadows.contact} transparent opacity={0} depthWrite={false} fog={false} />
+      </mesh>
+      {/*
+        Glass shadow on the stone: lighter and softer than a solid object's,
+        falling back from the key light, with a warm caustic in front where
+        the glass and liquid focus light through.
+      */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-0.22, baseY + 0.005, -0.3]} scale={[baseW * 2.6, 0.95, 1]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial ref={glassShadowRef} map={shadows.soft} transparent opacity={0} depthWrite={false} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0.1, baseY + 0.007, 0.3]} scale={[baseW * 1.4, 0.42, 1]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial
+          ref={causticRef}
+          map={shadows.caustic}
+          transparent
+          opacity={0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
       </mesh>
       {/* Drawn after the stream (renderOrder) so the label and coffee cover it. */}
       <mesh position={[0, BOTTLE_Y, 0]} material={bodyMat} renderOrder={2}>
@@ -340,31 +390,6 @@ function Cap({ map }: { map: THREE.Texture }) {
     <mesh ref={ref} position={[CAP_X, CAP_Y, 0]} renderOrder={3}>
       <planeGeometry args={[CAP_W, CAP_PLANE_H]} />
       <meshBasicMaterial ref={matRef} map={map} transparent opacity={0} toneMapped={false} depthWrite={false} fog={false} />
-    </mesh>
-  );
-}
-
-/** Thin glass lip on the open neck once the cap is off. */
-function Mouth() {
-  const ref = useRef<THREE.Mesh>(null);
-  useFrame((state) => {
-    // Only while the cap is away; it covers the neck the rest of the time.
-    const t = loopTime(state.clock.elapsedTime);
-    if (ref.current) ref.current.visible = t > K.unscrewEnd && t < K.returnEnd;
-  });
-  return (
-    <mesh ref={ref} position={[POUR_X, MOUTH_Y + 0.012, 0]} rotation={[-Math.PI / 2 + 0.2, 0, 0]} renderOrder={3}>
-      <torusGeometry args={[MOUTH_R * 0.95, 0.022, 12, 96]} />
-      <meshPhysicalMaterial
-        color="#2a241c"
-        metalness={0}
-        roughness={0.08}
-        clearcoat={1}
-        clearcoatRoughness={0.05}
-        envMapIntensity={2}
-        transparent
-        opacity={0.85}
-      />
     </mesh>
   );
 }
@@ -427,12 +452,12 @@ const streamFrag = /* glsl */ `
     vec3 n = normalize(vNormal);
     float facing = clamp(abs(dot(n, vView)), 0.0, 1.0);
 
-    // Backlit cold brew: deep amber at the edges, glowing orange through the core.
-    vec3 edge = vec3(0.06, 0.012, 0.002);
-    vec3 body = vec3(0.34, 0.075, 0.006);
-    vec3 core = vec3(0.80, 0.24, 0.02);
+    // Milk coffee: creamy caramel, darker where the stream turns away.
+    vec3 edge = vec3(0.07, 0.028, 0.008);
+    vec3 body = vec3(0.34, 0.15, 0.06);
+    vec3 core = vec3(0.52, 0.27, 0.12);
     vec3 col = mix(edge, body, smoothstep(0.0, 0.55, facing));
-    col = mix(col, core, smoothstep(0.7, 1.0, facing) * 0.6);
+    col = mix(col, core, smoothstep(0.7, 1.0, facing) * 0.45);
 
     // Spiral bands from the twist, sliding down the stream.
     float band = sin(vAngle * 2.0 + vY * 12.0 + uTime * 9.0);
@@ -445,7 +470,7 @@ const streamFrag = /* glsl */ `
     col += vec3(1.0, 0.8, 0.55) * spec * 0.9;
     col += vec3(0.35, 0.12, 0.02) * pow(1.0 - facing, 3.0) * 0.5;
 
-    gl_FragColor = vec4(col, mix(0.82, 0.97, facing));
+    gl_FragColor = vec4(col, mix(0.92, 0.99, facing));
     #include <colorspace_fragment>
   }
 `;
@@ -515,6 +540,98 @@ function titleBand(w: number, h: number) {
   const fontPx = Math.min(144, Math.max(56, Math.min(0.082 * w, 0.17 * h)));
   const half = (fontPx * 0.9 + 70) / h; // glyphs + eyebrow lines, as a fraction of half-height
   return { lo: -half, hi: half };
+}
+
+/**
+ * Top-left corner kept free of beans for the logo, in screen space (-1..1):
+ * beans stay right of `x` or below `y`. Mirrors the logo's CSS in Teaser.tsx
+ * (position + size, plus breathing room).
+ */
+function logoCorner(w: number, h: number) {
+  const sm = w >= 640;
+  const right = (sm ? 32 + 104 : 20 + 80) + 28;
+  const bottom = (sm ? 28 + 104 : 20 + 80) + 28;
+  return { x: -1 + (2 * right) / w, y: 1 - (2 * bottom) / h };
+}
+
+/** The DOM taglines, faded in and out from the 3D loop (set by Teaser.tsx): on the stone, and above the bottle. */
+export const taglineEl: { current: HTMLElement | null } = { current: null };
+export const taglineTopEl: { current: HTMLElement | null } = { current: null };
+
+/**
+ * "Coffee Without Compromise" rises onto the stone once the coffee is
+ * pouring, and stays there until the cap is back on: then it hands over to
+ * the tagline above the bottle (one fades out as the other fades in).
+ */
+function taglineOpacity(t: number) {
+  const start = K.pourStart + K.dropTime + 0.3;
+  return smoothstep(start, start + 1.0, t) * (1 - smoothstep(K.screwEnd - 0.1, K.screwEnd + 0.6, t));
+}
+
+/** The tagline above the bottle appears once the cap is closed (taking over from the stone), and fades out with the bottle. */
+function taglineTopOpacity(t: number) {
+  return smoothstep(K.screwEnd - 0.1, K.screwEnd + 0.6, t) * (1 - smoothstep(K.fadeOutStart, CYCLE, t));
+}
+
+/** Point on the front face of the stone, just below its top edge, where the tagline sits. */
+function taglineAnchor(camera: THREE.Camera, w: number, h: number, out: THREE.Vector3) {
+  const portrait = w / h < PORTRAIT_ASPECT;
+  return out.set(POUR_X, STAND_Y - (portrait ? 0.3 : 0.27), 0.9).project(camera);
+}
+
+function TaglineSync() {
+  const { camera, size } = useThree();
+  const v = useMemo(() => new THREE.Vector3(), []);
+  const last = useRef({ o: -1, top: -1, o2: -1 });
+  useFrame((state) => {
+    const t = loopTime(state.clock.elapsedTime);
+    const topEl = taglineTopEl.current;
+    if (topEl) {
+      const o2 = taglineTopOpacity(t);
+      if (Math.abs(o2 - last.current.o2) >= 0.002) {
+        last.current.o2 = o2;
+        topEl.style.opacity = o2.toFixed(3);
+        topEl.style.transform = `translateY(${((1 - o2) * 14).toFixed(1)}px)`;
+      }
+    }
+    const el = taglineEl.current;
+    if (!el) return;
+    const o = taglineOpacity(t);
+    const top = Math.round(((1 - taglineAnchor(camera, size.width, size.height, v).y) / 2) * size.height);
+    if (top !== last.current.top) {
+      last.current.top = top;
+      el.style.top = `${top}px`;
+    }
+    if (Math.abs(o - last.current.o) < 0.002) return;
+    last.current.o = o;
+    el.style.opacity = o.toFixed(3);
+    // Centred on the anchor, rising a little as it appears.
+    el.style.transform = `translateY(calc(-50% + ${((1 - o) * 14).toFixed(1)}px))`;
+  });
+  return null;
+}
+
+/**
+ * Where the tagline sits, in screen space (-1..1): half-width and the top and
+ * bottom of its box, around its anchor on the stone. Mirrors its CSS in
+ * Teaser.tsx, plus breathing room; beans keep out of it.
+ */
+function taglineBox(w: number, h: number, anchorY: number) {
+  const sm = w >= 640;
+  const fontPx = Math.min(25.6, Math.max(13.6, Math.min(0.0175 * w, 0.032 * h)));
+  const widthPx = 25 * fontPx * (sm ? 1.1 : 0.95) + 56;
+  const halfPx = (fontPx * 1.4 + 8 + 1) / 2 + 22;
+  return { halfX: widthPx / w, top: anchorY + (2 * halfPx) / h, bottom: anchorY - (2 * halfPx) / h };
+}
+
+/** Same, for the tagline above the bottle (top 9vh, or 15vh on phones). */
+function taglineTopBox(w: number, h: number) {
+  const sm = w >= 640;
+  const fontPx = Math.min(25.6, Math.max(13.6, Math.min(0.0175 * w, 0.032 * h)));
+  const widthPx = 25 * fontPx * (sm ? 1.1 : 0.95) + 56;
+  const topPx = (sm ? 0.09 : 0.15) * h - 22;
+  const bottomPx = topPx + 22 + fontPx * 1.4 + 8 + 1 + 22;
+  return { halfX: widthPx / w, top: 1 - (2 * topPx) / h, bottom: 1 - (2 * bottomPx) / h };
 }
 
 /** Remaps v in -1..1 onto [-1, lo] ∪ [hi, 1], keeping the relative order and spacing. */
@@ -606,6 +723,19 @@ function FloatingBeans() {
   }, [colors]);
 
   const pointer = useRef(new THREE.Vector2());
+  const anchor = useMemo(() => new THREE.Vector3(), []);
+  // Per-frame scratch: each bean's position, depth and keep-clear sizes.
+  const tmp = useMemo(
+    () => ({
+      x: new Float32Array(count),
+      y: new Float32Array(count),
+      dist: new Float32Array(count),
+      halfH: new Float32Array(count),
+      halfW: new Float32Array(count),
+      clearW: new Float32Array(count),
+    }),
+    [count],
+  );
 
   useFrame((state, dt) => {
     const mesh = meshRef.current;
@@ -614,7 +744,13 @@ function FloatingBeans() {
     const cam = camera as THREE.PerspectiveCamera;
     const tanHalf = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
     const band = titleBand(size.width, size.height);
+    const logo = logoCorner(size.width, size.height);
+    const tags = [
+      taglineBox(size.width, size.height, taglineAnchor(camera, size.width, size.height, anchor).y),
+      taglineTopBox(size.width, size.height),
+    ];
 
+    const camY = cam.position.y;
     for (let i = 0; i < count; i++) {
       const s = seeds[i];
       // Spread across the visible frustum at this bean's depth.
@@ -626,7 +762,87 @@ function FloatingBeans() {
       const x = Math.sign(s.nx) * (clearW + Math.abs(s.nx) * (halfW - clearW)) + Math.sin(time * 0.2 + s.phase) * 0.08;
       // Squeeze the title band out of this bean's vertical range (screen-space -1..1).
       const ny = s.avoid ? skipBand(s.ny, band.lo - (s.scale * 0.75) / halfH, band.hi + (s.scale * 0.75) / halfH) : s.ny;
-      const y = cam.position.y + ny * halfH + Math.sin(time * 0.6 + s.phase) * s.bob;
+      const y = camY + ny * halfH + Math.sin(time * 0.6 + s.phase) * s.bob;
+      tmp.x[i] = x;
+      tmp.y[i] = y;
+      tmp.dist[i] = dist;
+      tmp.halfH[i] = halfH;
+      tmp.halfW[i] = halfW;
+      tmp.clearW[i] = clearW;
+    }
+
+    // No two beans overlap on screen: a few relaxation passes push apart any
+    // pair whose on-screen circles touch, split evenly between them. Done in
+    // screen terms (position / depth) so near and far beans are treated alike.
+    for (let pass = 0; pass < 4; pass++) {
+      for (let i = 0; i < count; i++) {
+        const ri = (seeds[i].scale * BEAN_REACH) / tmp.dist[i];
+        for (let j = i + 1; j < count; j++) {
+          const rj = (seeds[j].scale * BEAN_REACH) / tmp.dist[j];
+          const ax = tmp.x[i] / tmp.dist[i];
+          const ay = (tmp.y[i] - camY) / tmp.dist[i];
+          const bx = tmp.x[j] / tmp.dist[j];
+          const by = (tmp.y[j] - camY) / tmp.dist[j];
+          let dx = bx - ax;
+          let dy = by - ay;
+          let d = Math.hypot(dx, dy);
+          const min = ri + rj;
+          if (d >= min) continue;
+          if (d < 1e-5) {
+            dx = 1;
+            dy = 0;
+            d = 1;
+          }
+          const push = (min - d) / 2;
+          const ux = dx / d;
+          const uy = dy / d;
+          tmp.x[i] -= ux * push * tmp.dist[i];
+          tmp.y[i] -= uy * push * tmp.dist[i];
+          tmp.x[j] += ux * push * tmp.dist[j];
+          tmp.y[j] += uy * push * tmp.dist[j];
+        }
+      }
+    }
+
+    for (let i = 0; i < count; i++) {
+      const s = seeds[i];
+      const halfH = tmp.halfH[i];
+      const halfW = tmp.halfW[i];
+      const reach = s.scale * 0.75;
+      // Being pushed apart mustn't bring a bean back over the bottle or the title.
+      const side = Math.sign(s.nx);
+      let x = side * Math.max(side * tmp.x[i], tmp.clearW[i]);
+      let y = tmp.y[i];
+      if (s.avoid) {
+        const sy = (y - camY) / halfH;
+        const lo = band.lo - reach / halfH;
+        const hi = band.hi + reach / halfH;
+        if (sy > lo && sy < hi) y = camY + (sy - lo < hi - sy ? lo : hi) * halfH;
+      }
+      // Keep out from behind the logo: a bean reaching into its corner is
+      // nudged out of it, right or down, whichever is the shorter move (so
+      // they don't all pile up in one place).
+      const logoX = logo.x * halfW;
+      const logoY = cam.position.y + logo.y * halfH;
+      const pushRight = logoX - (x - reach);
+      const pushDown = y + reach - logoY;
+      if (pushRight > 0 && pushDown > 0) {
+        if (pushRight < pushDown) x += pushRight;
+        else y -= pushDown;
+      }
+      // Keep both taglines' spots clear: out sideways or down, whichever is
+      // the shorter move.
+      for (const tag of tags) {
+        const tagX = tag.halfX * halfW;
+        const tagTop = camY + tag.top * halfH;
+        const tagBottom = camY + tag.bottom * halfH;
+        if (Math.abs(x) - reach < tagX && y + reach > tagBottom && y - reach < tagTop) {
+          const out = tagX + reach - Math.abs(x);
+          const down = y + reach - tagBottom;
+          if (out < down) x += Math.sign(x || 1) * out;
+          else y -= down;
+        }
+      }
       dummy.position.set(x, y, s.z);
       dummy.rotation.set(s.rx + time * s.spin, s.ry + time * s.spin * 0.7, s.rz + Math.sin(time * 0.3 + s.phase) * 0.4);
       dummy.scale.setScalar(s.scale);

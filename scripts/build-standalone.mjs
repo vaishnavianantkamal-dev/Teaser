@@ -50,6 +50,9 @@ const assets = {
   logo: dataUri('brand/logo.webp', 'image/webp'),
 };
 
+// Favicon: just the round emblem, transparent around it.
+const favicon = dataUri('brand/favicon-32.png', 'image/png');
+
 const safe = (s) => s.replace(/<\/(script|style)/gi, '<\\/$1');
 
 const html = `<!DOCTYPE html>
@@ -59,11 +62,11 @@ const html = `<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#040F09" />
     <title>Coffee Science — Something Brewing</title>
-    <link rel="icon" href="${assets.logo}" />
+    <link rel="icon" type="image/png" href="${favicon}" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Playfair+Display:wght@500&family=Jost:wght@300;400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Playfair+Display:wght@500;600&family=Jost:wght@300;400;500&display=swap"
       rel="stylesheet"
     />
     <style>${safe(css)}</style>

@@ -6,8 +6,7 @@ import { radialTexture } from '@/three/textures';
 
 /**
  * Set dressing around the bottle: the dark stone it stands on, coffee leaves
- * resting on the stone, a ribbon of cold brew that swirls up round the bottle
- * once it's full (throwing off spray), and coffee droplets drifting in the air.
+ * resting on the stone, and coffee droplets drifting in the air.
  *
  * Everything is placed relative to `topY` (the stone's top surface, where the
  * bottle's base sits) and `x` (the bottle's centre line).
@@ -355,260 +354,11 @@ export function Leaves({ x, topY }: { x: number; topY: number }) {
   );
 }
 
-// ---- coffee swirl -------------------------------------------------------------
-
-/** Swirl centre line, mirrored on the CPU for the spray (keep in sync with `curve` in swirlVert). */
-function swirlCurve(s: number, time: number, bottom: number, top: number, R0: number, out: THREE.Vector3) {
-  const th = -2.2 + s * 9.5 + time * 0.9;
-  const y = bottom + (top - bottom) * s + 0.06 * Math.sin(s * 11 + time * 2.3);
-  const R = R0 * (1 + 0.22 * Math.sin(s * 4 + 0.6) + 0.05 * Math.sin(s * 17 + time * 3.1));
-  return out.set(Math.cos(th) * R, y, Math.sin(th) * R * 0.8);
-}
-
-const swirlVert = /* glsl */ `
-  uniform float uTime;
-  uniform float uHead;
-  uniform float uTail;
-  uniform float uBottom;
-  uniform float uTop;
-  uniform float uR;
-  varying vec3 vNormal;
-  varying vec3 vView;
-  varying vec3 vTangent;
-  varying float vZ;
-  varying float vS;
-  varying float vA;
-  varying float vEdge;
-
-  // Centre line: about one and a half turns rising round the bottle, slowly spinning.
-  vec3 curve(float s) {
-    float th = -2.2 + s * 9.5 + uTime * 0.9;
-    float y = mix(uBottom, uTop, s) + 0.06 * sin(s * 11.0 + uTime * 2.3);
-    float R = uR * (1.0 + 0.22 * sin(s * 4.0 + 0.6) + 0.05 * sin(s * 17.0 + uTime * 3.1));
-    return vec3(cos(th) * R, y, sin(th) * R * 0.8);
-  }
-
-  void main() {
-    float s = position.y + 0.5;           // 0 at the stone, 1 at the top of the swirl
-    float a = atan(position.z, position.x);
-    vec3 C = curve(s);
-    vec3 T = normalize(curve(s + 0.002) - curve(s - 0.002));
-    vec3 N = normalize(vec3(C.x, 0.0, C.z));
-    vec3 B = normalize(cross(T, N));
-    N = normalize(cross(B, T));
-
-    // A sheet of liquid: thick, rounded body with thin, ragged edges that
-    // flare and ripple as it flows, swelling and pinching along its length.
-    float body = pow(sin(3.14159 * s), 0.6);
-    float env = sqrt(clamp((uHead - s) / 0.05, 0.0, 1.0)) * sqrt(clamp((s - uTail) / 0.05, 0.0, 1.0));
-    float swell = 1.0 + 0.3 * sin(s * 23.0 - uTime * 6.0) + 0.15 * sin(s * 57.0 + uTime * 9.0);
-    float sa = sin(a);
-    float edge = pow(abs(sa), 6.0);
-    float rag = 1.0 + edge * (0.45 * sin(s * 41.0 + uTime * 7.0 + sign(sa) * 2.0) + 0.25 * sin(s * 97.0 - uTime * 11.0));
-    float w = 0.12 * body * env * swell * rag;
-    float h = 0.05 * body * env * (1.0 - 0.6 * edge);
-
-    vec3 p = C + N * cos(a) * h + B * sa * w;
-    // Ripples running along the surface.
-    p += N * cos(a) * 0.012 * env * sin(s * 70.0 - uTime * 12.0 + sa * 2.0);
-    vec3 n = normalize(N * cos(a) / max(h, 1e-4) + B * sa / max(w, 1e-4));
-
-    vec4 mv = modelViewMatrix * vec4(p, 1.0);
-    vNormal = normalize(normalMatrix * n);
-    vTangent = normalize(normalMatrix * T);
-    vView = normalize(-mv.xyz);
-    vZ = p.z;
-    vS = s;
-    vA = a;
-    vEdge = edge;
-    gl_Position = projectionMatrix * mv;
-  }
-`;
-
-const swirlFrag = /* glsl */ `
-  uniform float uTime;
-  uniform float uSide;
-  uniform float uOpacity;
-  varying vec3 vNormal;
-  varying vec3 vView;
-  varying vec3 vTangent;
-  varying float vZ;
-  varying float vS;
-  varying float vA;
-  varying float vEdge;
-
-  void main() {
-    // Drawn in two passes, behind and in front of the bottle.
-    if (vZ * uSide < 0.0) discard;
-
-    // Fine ripples in the shading normal, flowing along the stream.
-    vec3 n = normalize(vNormal);
-    float rip = sin(vS * 160.0 - uTime * 18.0 + vA * 3.0) * 0.5 + sin(vS * 310.0 + vA * 7.0 - uTime * 25.0) * 0.25;
-    n = normalize(n + vTangent * rip * 0.35);
-    vec3 v = normalize(vView);
-    float facing = clamp(abs(dot(n, v)), 0.0, 1.0);
-
-    // Light passing through: thick parts deep brown, thin parts and the
-    // ragged edges glow amber, the thinnest almost gold.
-    // (Colours are linear; they come out much lighter on screen.)
-    float thin = clamp((1.0 - facing) * 0.55 + vEdge * 0.55, 0.0, 1.0);
-    vec3 deep = vec3(0.018, 0.004, 0.0006);
-    vec3 amber = vec3(0.2, 0.055, 0.007);
-    vec3 glow = vec3(0.65, 0.26, 0.05);
-    vec3 col = mix(deep, amber, smoothstep(0.1, 0.75, thin));
-    col = mix(col, glow, smoothstep(0.7, 1.0, thin) * 0.55);
-    // Swirling density inside the liquid.
-    col *= 0.75 + 0.45 * smoothstep(-0.6, 1.0, sin(vS * 37.0 - uTime * 5.0 + vA * 2.0));
-
-    // Sharp, wet highlights from the key and rim lights, plus a softer sheen.
-    vec3 h1 = normalize(normalize(vec3(-0.45, 0.45, 0.8)) + v);
-    vec3 h2 = normalize(normalize(vec3(0.6, 0.7, 0.4)) + v);
-    float spec = pow(max(dot(n, h1), 0.0), 90.0) * 1.6 + pow(max(dot(n, h2), 0.0), 60.0) * 0.9;
-    float sheen = pow(max(dot(n, h1), 0.0), 12.0) * 0.05;
-    // Wet, mirror-like rim where the surface turns away from the camera.
-    float rim = pow(1.0 - facing, 4.0) * (1.0 - vEdge * 0.5);
-    col += vec3(1.0, 0.92, 0.8) * spec + vec3(1.0, 0.65, 0.35) * sheen + vec3(0.9, 0.7, 0.5) * rim * 0.15;
-    // Glossy reflection of a bright, warm studio light overhead: streaks
-    // wherever the rippled surface tilts up towards it.
-    vec3 refl = reflect(-v, n);
-    float fres = 0.08 + 0.92 * pow(1.0 - facing, 5.0);
-    float sky = smoothstep(0.8, 0.97, refl.y);
-    col += vec3(1.0, 0.85, 0.65) * sky * (0.5 + fres) * 1.2;
-    // Backlight glowing through the thin ragged edges.
-    col += vec3(0.8, 0.35, 0.07) * vEdge * 0.15;
-
-    float alpha = mix(0.96, 0.75, thin) + spec * 0.5 + sky * 0.3;
-    gl_FragColor = vec4(col, clamp(alpha, 0.0, 1.0) * uOpacity);
-    #include <colorspace_fragment>
-  }
-`;
-
-export type SwirlState = { head: number; tail: number; opacity: number };
-
-/**
- * Ribbon of cold brew spiralling up round the bottle, throwing off spray as
- * it goes; `state(time)` drives when it grows, drains and fades.
- */
-export function CoffeeSwirl({
-  x,
-  bottom,
-  top,
-  radius,
-  state,
-}: {
-  x: number;
-  bottom: number;
-  top: number;
-  radius: number;
-  state: (time: number) => SwirlState;
-}) {
-  const geo = useMemo(() => new THREE.CylinderGeometry(1, 1, 1, 24, 360, true), []);
-  const [back, front] = useMemo(
-    () =>
-      [-1, 1].map(
-        (side) =>
-          new THREE.ShaderMaterial({
-            vertexShader: swirlVert,
-            fragmentShader: swirlFrag,
-            transparent: true,
-            depthWrite: false,
-            side: THREE.DoubleSide,
-            uniforms: {
-              uTime: { value: 0 },
-              uHead: { value: 0 },
-              uTail: { value: 0 },
-              uBottom: { value: bottom },
-              uTop: { value: top },
-              uR: { value: radius },
-              uSide: { value: side },
-              uOpacity: { value: 0 },
-            },
-          }),
-      ),
-    [bottom, top, radius],
-  );
-  useEffect(
-    () => () => {
-      geo.dispose();
-      back.dispose();
-      front.dispose();
-    },
-    [geo, back, front],
-  );
-  const groupRef = useRef<THREE.Group>(null);
-
-  // Spray: drops flung off the swirl, each on its own short repeating life.
-  const { size } = useThree();
-  const sprayCount = size.width < 640 ? 24 : 48;
-  const spray = useMemo(() => {
-    const r = mulberry32(57);
-    return Array.from({ length: sprayCount }, () => ({
-      s: 0.08 + r() * 0.84,
-      life: 0.7 + r() * 0.8,
-      offset: r(),
-      speed: 0.35 + r() * 0.6,
-      up: (r() - 0.3) * 0.8,
-      size: 0.012 + Math.pow(r(), 2) * 0.03,
-    }));
-  }, [sprayCount]);
-  const sprayRef = useRef<THREE.InstancedMesh>(null);
-  const drop = useDropMaterial();
-  const tmp = useMemo(() => ({ p: new THREE.Vector3(), o: new THREE.Object3D() }), []);
-
-  useFrame((s) => {
-    const time = s.clock.elapsedTime;
-    const { head, tail, opacity } = state(time);
-    for (const m of [back, front]) {
-      m.uniforms.uTime.value = time;
-      m.uniforms.uHead.value = head * 1.05;
-      m.uniforms.uTail.value = tail * 1.05;
-      m.uniforms.uOpacity.value = opacity;
-    }
-    const on = head > 0 && tail < 1 && opacity > 0;
-    if (groupRef.current) groupRef.current.visible = on;
-
-    const mesh = sprayRef.current;
-    if (!mesh || !on) return;
-    drop.material.uniforms.uOpacity.value = opacity;
-    for (let i = 0; i < sprayCount; i++) {
-      const d = spray[i];
-      const phase = (time / d.life + d.offset) % 1;
-      // Only from the part of the swirl that's currently there.
-      const live = d.s < head * 1.05 - 0.03 && d.s > tail * 1.05 + 0.03;
-      const born = time - phase * d.life;
-      swirlCurve(d.s, born, bottom, top, radius, tmp.p);
-      const out = Math.hypot(tmp.p.x, tmp.p.z) || 1;
-      const age = phase * d.life;
-      const k = d.speed * age;
-      tmp.o.position.set(
-        tmp.p.x + (tmp.p.x / out) * k,
-        tmp.p.y + d.up * age - 0.9 * age * age,
-        tmp.p.z + (tmp.p.z / out) * k * 0.8,
-      );
-      const sz = live ? d.size * (1 - phase * 0.6) : 0;
-      tmp.o.scale.set(sz, sz * 1.2, sz);
-      tmp.o.updateMatrix();
-      mesh.setMatrixAt(i, tmp.o.matrix);
-    }
-    mesh.instanceMatrix.needsUpdate = true;
-  });
-
-  // Back half before the bottle (behind the label), front half after its cap.
-  return (
-    <group ref={groupRef} position={[x, 0, 0]}>
-      <mesh geometry={geo} material={back} renderOrder={1} frustumCulled={false} />
-      <mesh geometry={geo} material={front} renderOrder={4} frustumCulled={false} />
-      <instancedMesh key={sprayCount} ref={sprayRef} args={[drop.geometry, drop.material, sprayCount]} frustumCulled={false} />
-    </group>
-  );
-}
-
 // ---- droplets -------------------------------------------------------------------
 
 /**
- * A coffee droplet: a little lens of cold brew. Dark at the rim, glowing
- * amber through the middle (light shining through it), with a sharp white
- * glint and a small secondary one.
+ * A droplet of milk coffee: darker at the rim, creamy caramel through the
+ * middle, with a sharp white glint and a small secondary one.
  */
 const dropVert = /* glsl */ `
   varying vec3 vNormal;
@@ -634,9 +384,9 @@ const dropFrag = /* glsl */ `
     vec3 n = normalize(vNormal);
     vec3 v = normalize(vView);
     float facing = clamp(dot(n, v), 0.0, 1.0);
-    vec3 col = mix(vec3(0.012, 0.003, 0.0005), vec3(0.16, 0.045, 0.006), smoothstep(0.2, 0.95, facing));
+    vec3 col = mix(vec3(0.04, 0.016, 0.005), vec3(0.34, 0.15, 0.06), smoothstep(0.15, 0.9, facing));
     // Light gathered in the lower half, as through a lens.
-    col += vec3(0.45, 0.16, 0.025) * smoothstep(0.3, 0.95, -n.y) * facing;
+    col += vec3(0.25, 0.12, 0.04) * smoothstep(0.3, 0.95, -n.y) * facing;
     vec3 h1 = normalize(normalize(vec3(-0.45, 0.6, 0.7)) + v);
     vec3 h2 = normalize(normalize(vec3(0.5, -0.2, 0.8)) + v);
     col += vec3(1.0, 0.95, 0.85) * (pow(max(dot(n, h1), 0.0), 260.0) * 3.0 + pow(max(dot(n, h2), 0.0), 120.0) * 0.6);
@@ -645,7 +395,7 @@ const dropFrag = /* glsl */ `
   }
 `;
 
-/** Shared drop geometry + material, built per component (cheap) so each can fade on its own. */
+/** Drop geometry + material. */
 function useDropMaterial() {
   const res = useMemo(
     () => ({
