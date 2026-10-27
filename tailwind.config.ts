@@ -24,6 +24,8 @@ const config: Config = {
       },
       fontFamily: {
         serif: ['var(--font-display)', 'Georgia', 'serif'],
+        // "Coffee Science" title.
+        title: ['"Playfair Display"', 'Georgia', 'serif'],
         sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
       },
       keyframes: {

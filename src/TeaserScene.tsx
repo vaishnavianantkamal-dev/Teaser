@@ -8,6 +8,7 @@ import { lerp, mulberry32, smoothstep } from '@/three/math';
 import { goldGlow, radialTexture, softShadow } from '@/three/textures';
 import { TEASER_IMG } from './assets';
 import { BASE, CAP_RECT, cutoutBottle } from './cutout';
+import { CoffeeSwirl, Droplets, Leaves, Stone, type SwirlState } from './scenery';
 
 const IMG_W = 960;
 const IMG_H = 1280;
@@ -48,6 +49,18 @@ const K = {
   fadeOutStart: 12.3,
 };
 
+/** Top of the stone the bottle stands on: the underside of the glass. */
+const STAND_Y = py2y(BASE.y);
+
+/**
+ * The coffee swirl: once the bottle is full it rises from the stone and wraps
+ * round the bottle while the cap goes back on, then drains away.
+ */
+function swirlState(time: number): SwirlState {
+  const t = loopTime(time);
+  return { head: smoothstep(8.7, 10.0, t), tail: smoothstep(11.2, 12.4, t), opacity: bottleOpacity(t) };
+}
+
 /** Bottle visibility: fades in empty at the start of a loop, out (full) at the end. */
 const bottleOpacity = (t: number) => smoothstep(0, K.fadeIn, t) * (1 - smoothstep(K.fadeOutStart, CYCLE, t));
 
@@ -87,6 +100,10 @@ export default function TeaserScene() {
       <PourStream />
       <BottleBillboard />
       <Mouth />
+      <Stone x={POUR_X} topY={STAND_Y} />
+      <Leaves x={POUR_X} topY={STAND_Y} />
+      <CoffeeSwirl x={POUR_X} bottom={STAND_Y + 0.12} top={py2y(LIQUID.shoulder) + 0.15} radius={0.72} state={swirlState} />
+      <Droplets x={POUR_X} bottom={STAND_Y + 0.15} top={1.3} opacity={(time) => bottleOpacity(loopTime(time))} />
       <Dust />
     </>
   );
@@ -312,13 +329,15 @@ function Cap({ map }: { map: THREE.Texture }) {
       y = lerp(CAP_Y + 0.05 + away, CAP_Y + 0.05, back) - screw * 0.05;
       tilt = (1 - back) * 0.35;
     }
-    m.position.set(CAP_X + tilt * 0.3, y, 0.3);
+    // Same plane as the bottle (z = 0): any z offset makes perspective scale
+    // and shift the cap, so it floats above the neck instead of seating on it.
+    m.position.set(CAP_X + tilt * 0.3, y, 0);
     m.rotation.z = -tilt + Math.sin(t * 22) * 0.035 * twisting;
     if (matRef.current) matRef.current.opacity = bottleOpacity(t);
   });
 
   return (
-    <mesh ref={ref} position={[CAP_X, CAP_Y, 0.3]} renderOrder={3}>
+    <mesh ref={ref} position={[CAP_X, CAP_Y, 0]} renderOrder={3}>
       <planeGeometry args={[CAP_W, CAP_PLANE_H]} />
       <meshBasicMaterial ref={matRef} map={map} transparent opacity={0} toneMapped={false} depthWrite={false} fog={false} />
     </mesh>
@@ -512,9 +531,10 @@ function skipBand(v: number, lo: number, hi: number) {
 function FloatingBeans() {
   const { viewport, camera, size } = useThree();
   const mobile = size.width < 640;
-  const geometry = useMemo(() => createBeanGeometry(0.5, mobile ? 30 : 40), [mobile]);
-  const maps = useMemo(() => buildBeanMaps(3), []);
-  const material = useMemo(() => createBeanMaterial(maps, 0.02), [maps]);
+  const geometry = useMemo(() => createBeanGeometry(0.5, mobile ? 40 : 64), [mobile]);
+  // Phones get a lighter crinkle map: quicker to generate, and the beans are smaller on screen.
+  const maps = useMemo(() => buildBeanMaps(3, mobile ? 512 : 1024), [mobile]);
+  const material = useMemo(() => createBeanMaterial(maps, 0.75), [maps]);
   useEffect(
     () => () => {
       geometry.dispose();
@@ -537,9 +557,9 @@ function FloatingBeans() {
     const layers = [
       // `clear`: half-width (in bottle-plane units) of the column kept free for the bottle and pour.
       // `avoid`: stays out of the title band (the far layer just drifts behind the text).
-      { n: mobile ? 4 : 8, zMin: 1.6, zMax: 3.2, sMin: 0.42, sMax: 0.6, clear: 1.6, avoid: true },
-      { n: mobile ? 12 : 22, zMin: -0.8, zMax: 1.0, sMin: 0.3, sMax: 0.42, clear: 0.75, avoid: true },
-      { n: mobile ? 8 : 14, zMin: -3.5, zMax: -1.5, sMin: 0.24, sMax: 0.32, clear: 0.45, avoid: false },
+      { n: mobile ? 4 : 8, zMin: 1.6, zMax: 3.2, sMin: 0.37, sMax: 0.53, clear: 1.6, avoid: true },
+      { n: mobile ? 12 : 22, zMin: -0.8, zMax: 1.0, sMin: 0.26, sMax: 0.37, clear: 0.75, avoid: true },
+      { n: mobile ? 8 : 14, zMin: -3.5, zMax: -1.5, sMin: 0.21, sMax: 0.28, clear: 0.45, avoid: false },
     ];
     const out: Array<{
       nx: number; ny: number; z: number; scale: number; clear: number; avoid: boolean;
@@ -574,7 +594,8 @@ function FloatingBeans() {
     const arr = new Float32Array(count * 3);
     const c = new THREE.Color();
     for (let i = 0; i < count; i++) {
-      c.setHSL(0.06 + r() * 0.03, 0.15 + r() * 0.2, 0.42 + r() * 0.2);
+      // Small roast-to-roast variation; near-neutral so it shades the texture rather than tinting it orange.
+      c.setHSL(0.07 + r() * 0.02, 0.08 + r() * 0.12, 0.62 + r() * 0.26);
       arr.set([c.r, c.g, c.b], i * 3);
     }
     return arr;

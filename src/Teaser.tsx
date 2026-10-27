@@ -60,34 +60,29 @@ export default function Teaser() {
       */}
       <div className="pointer-events-none absolute inset-0 z-[3]">
         <div className="absolute inset-x-0 bottom-[13vh] flex flex-col items-center gap-2 text-center animate-fade-up [@media(min-aspect-ratio:4/5)]:hidden">
-          <p className="text-[10px] uppercase tracking-[0.5em] text-gold-400/80">Coming Soon</p>
-          <h1 className="whitespace-nowrap font-serif text-[clamp(2rem,9.5vw,4rem)] font-light leading-none text-cream-50">
-            Coffee <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-gold-300">Science</span>
+          <h1 className="whitespace-nowrap pb-1 font-title text-[clamp(2rem,9.5vw,4rem)] font-medium leading-none text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-gold-300">
+            Coffee Science
           </h1>
-          <p className="text-[10px] uppercase tracking-[0.4em] text-gold-400/80">Coffee Without Compromise</p>
+          <p className="text-[10px] uppercase tracking-[0.4em] text-gold-400/80">Something Brewing</p>
         </div>
 
         <div className="absolute inset-y-0 left-0 hidden w-1/2 items-center justify-end pr-[clamp(6rem,11vw,12rem)] [@media(min-aspect-ratio:4/5)]:flex">
           <div className="flex flex-col items-end animate-fade-up" style={{ animationDelay: '0.3s' }}>
-            <p className="mb-4 flex items-center gap-3 text-[11px] uppercase tracking-[0.5em] text-gold-400/80">
-              <span className="h-px w-10 bg-gold-400/60" />
-              Coming Soon
-            </p>
-            <h1 className="font-serif text-[clamp(3.5rem,min(8.2vw,17vh),9rem)] font-light leading-[0.9] text-cream-50 drop-shadow-[0_6px_30px_rgba(0,0,0,0.7)]">
+            <h1 className="pb-[0.12em] font-title text-[clamp(3.5rem,min(8.2vw,17vh),9rem)] font-medium leading-[0.9] text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-gold-300 drop-shadow-[0_6px_30px_rgba(0,0,0,0.7)]">
               Coffee
             </h1>
           </div>
         </div>
         <div className="absolute inset-y-0 right-0 hidden w-1/2 items-center justify-start pl-[clamp(6rem,11vw,12rem)] [@media(min-aspect-ratio:4/5)]:flex">
-          <div className="flex flex-col items-start animate-fade-up" style={{ animationDelay: '0.5s' }}>
+          <div className="relative flex flex-col items-start animate-fade-up" style={{ animationDelay: '0.5s' }}>
             <p
               aria-hidden
-              className="font-serif text-[clamp(3.5rem,min(8.2vw,17vh),9rem)] font-light leading-[0.9] text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-gold-300 drop-shadow-[0_6px_30px_rgba(0,0,0,0.7)]"
+              className="pb-[0.12em] font-title text-[clamp(3.5rem,min(8.2vw,17vh),9rem)] font-medium leading-[0.9] text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-gold-300 drop-shadow-[0_6px_30px_rgba(0,0,0,0.7)]"
             >
               Science
             </p>
-            <p className="mt-4 flex items-center gap-3 text-[11px] uppercase tracking-[0.5em] text-gold-400/80">
-              Coffee Without Compromise
+            <p className="absolute left-0 top-full mt-3 flex items-center gap-3 whitespace-nowrap text-[11px] uppercase tracking-[0.5em] text-gold-400/80">
+              Something Brewing
               <span className="h-px w-10 bg-gold-400/60" />
             </p>
           </div>
@@ -107,8 +102,8 @@ export default function Teaser() {
         className="pointer-events-none absolute inset-x-0 bottom-[4vh] z-10 flex flex-col items-center gap-3 animate-fade-up"
         style={{ animationDelay: '0.6s' }}
       >
-        <p className="pl-[0.55em] font-serif text-[clamp(0.85rem,min(1.6vw,3vh),1.35rem)] font-normal uppercase tracking-[0.55em] text-gold-300">
-          Something Brewing
+        <p className="whitespace-nowrap pl-[0.3em] font-serif text-[clamp(0.75rem,min(1.6vw,3vh),1.35rem)] font-normal uppercase tracking-[0.3em] text-gold-300 sm:pl-[0.55em] sm:tracking-[0.55em]">
+          Coffee Without Compromise
         </p>
         <div className="h-px w-24 bg-gradient-to-r from-transparent via-gold-400/80 to-transparent" />
       </div>
