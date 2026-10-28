@@ -58,6 +58,64 @@
   }
 }
 
+/*
+ * Luxury 3D Gold Typography for "Coffee" and "Science":
+ * Physical 3D extrusion facets, top-edge specular bevel, polished
+ * metallic face reflection, and ambient occlusion contact depth.
+ */
+.title-word-3d {
+  position: relative;
+  display: inline-block;
+  user-select: none;
+  background-image: linear-gradient(
+    180deg,
+    #f2dfb4 0%,
+    #e8ce93 20%,
+    #d8b164 45%,
+    #c4983f 70%,
+    #a47522 88%,
+    #764f0b 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.title-word-3d::before {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: inherit;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  white-space: inherit;
+  z-index: -1;
+  color: #3b2401;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  /* Stepped physical 3D extrusion facets from top to underside */
+  text-shadow:
+    0 1px 0 #eed69e,
+    0 2px 0 #e0c17c,
+    0 3px 0 #d1ab58,
+    0 4px 0 #be9539,
+    0 5px 0 #ab7e1f,
+    0 6px 0 #956b0e,
+    0 7px 0 #7e5404,
+    0 8px 1px #5c3b01,
+    0 9px 1px #3b2401,
+    /* Ambient occlusion contact & deep cast shadows */
+    0 11px 12px rgba(0, 0, 0, 0.8),
+    0 18px 24px rgba(0, 0, 0, 0.9),
+    0 30px 42px rgba(0, 0, 0, 0.96);
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

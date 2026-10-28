@@ -60,14 +60,20 @@ export default function Teaser() {
       */}
       <div className="pointer-events-none absolute inset-0 z-[3]">
         <div className="absolute inset-x-0 bottom-[13vh] flex flex-col items-center gap-2 text-center animate-fade-up [@media(min-aspect-ratio:4/5)]:hidden">
-          <h1 className="whitespace-nowrap pb-1 font-title text-[clamp(2rem,9.5vw,4rem)] font-medium leading-none text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-gold-300">
+          <h1
+            data-text="Coffee Science"
+            className="title-word-3d whitespace-nowrap pb-1 font-title text-[clamp(2rem,9.5vw,4rem)] font-medium leading-none"
+          >
             Coffee Science
           </h1>
         </div>
 
         <div className="absolute inset-y-0 left-0 hidden w-1/2 items-center justify-end pr-[clamp(6rem,11vw,12rem)] [@media(min-aspect-ratio:4/5)]:flex">
           <div className="flex flex-col items-end animate-fade-up" style={{ animationDelay: '0.3s' }}>
-            <h1 className="pb-[0.12em] font-title text-[clamp(3.5rem,min(8.2vw,17vh),9rem)] font-medium leading-[0.9] text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-gold-300 drop-shadow-[0_6px_30px_rgba(0,0,0,0.7)]">
+            <h1
+              data-text="Coffee"
+              className="title-word-3d pb-[0.12em] font-title text-[clamp(3.5rem,min(8.2vw,17vh),9rem)] font-medium leading-[0.9]"
+            >
               Coffee
             </h1>
           </div>
@@ -76,7 +82,8 @@ export default function Teaser() {
           <div className="flex flex-col items-start animate-fade-up" style={{ animationDelay: '0.5s' }}>
             <p
               aria-hidden
-              className="pb-[0.12em] font-title text-[clamp(3.5rem,min(8.2vw,17vh),9rem)] font-medium leading-[0.9] text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-gold-300 drop-shadow-[0_6px_30px_rgba(0,0,0,0.7)]"
+              data-text="Science"
+              className="title-word-3d pb-[0.12em] font-title text-[clamp(3.5rem,min(8.2vw,17vh),9rem)] font-medium leading-[0.9]"
             >
               Science
             </p>
@@ -100,7 +107,7 @@ export default function Teaser() {
         className="pointer-events-none absolute inset-x-0 top-[15vh] z-10 flex flex-col items-center gap-2 opacity-0 sm:top-[9vh]"
       >
         <p className="tagline-shine whitespace-nowrap pl-[0.25em] font-title text-[clamp(0.85rem,min(1.75vw,3.2vh),1.6rem)] font-semibold uppercase tracking-[0.25em] sm:pl-[0.4em] sm:tracking-[0.4em]">
-          Coffee Without Compromise
+          Something Brewing
         </p>
         <div className="h-px w-24 bg-gradient-to-r from-transparent via-gold-400/80 to-transparent" />
       </div>
@@ -114,7 +121,7 @@ export default function Teaser() {
         ref={(el) => {
           taglineEl.current = el;
         }}
-        className="pointer-events-none absolute inset-x-0 top-[88%] z-10 flex flex-col items-center gap-2 opacity-0"
+        className="pointer-events-none absolute inset-x-0 top-[88%] z-10 flex flex-col items-center gap-2 opacity-100"
       >
         <p className="tagline-shine whitespace-nowrap pl-[0.25em] font-title text-[clamp(0.85rem,min(1.75vw,3.2vh),1.6rem)] font-semibold uppercase tracking-[0.25em] sm:pl-[0.4em] sm:tracking-[0.4em]">
           Coffee Without Compromise

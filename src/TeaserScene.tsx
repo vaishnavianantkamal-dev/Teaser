@@ -6,7 +6,7 @@ import { createBeanGeometry } from '@/three/beanGeometry';
 import { buildBeanMaps, createBeanMaterial } from '@/three/beanTextures';
 import { lerp, mulberry32, smoothstep } from '@/three/math';
 import { goldGlow, radialTexture, softShadow } from '@/three/textures';
-import { TEASER_IMG } from './assets';
+import { TEASER_IMG, MASK_IMG } from './assets';
 import { BASE, CAP_RECT, cutoutBottle } from './cutout';
 import { Droplets, Leaves, Stone } from './scenery';
 
@@ -65,6 +65,7 @@ function fillRow(t: number) {
 }
 
 useTexture.preload(TEASER_IMG);
+useTexture.preload(MASK_IMG);
 
 export default function TeaserScene() {
   return (
@@ -142,6 +143,7 @@ function BackGlow() {
  */
 const bodyFrag = /* glsl */ `
   uniform sampler2D map;
+  uniform sampler2D mask;
   uniform float uFillRow;
   uniform float uTime;
   uniform float uPour;
@@ -150,21 +152,14 @@ const bodyFrag = /* glsl */ `
 
   const vec2 IMG = vec2(960.0, 1280.0);
 
-  float labelMask(vec2 px) {
-    float u = (px.x - 477.0) / 152.0;
-    float arch = 70.0 * u * u;
-    float inX = step(325.0, px.x) * step(px.x, 630.0);
-    float inY = step(432.0 + arch, px.y) * step(px.y, 1088.0 - arch);
-    return inX * inY;
-  }
-
   void main() {
     vec4 c = texture2D(map, vUv);
+    float isLabel = texture2D(mask, vUv).r;
     vec2 px = vec2(vUv.x, 1.0 - vUv.y) * IMG;
     vec3 col = c.rgb;
     float alpha = c.a;
 
-    if (labelMask(px) < 0.5 && px.y < ${LIQUID.bottom}.0) {
+    if (isLabel < 0.5 && px.y < ${LIQUID.bottom}.0) {
       // Liquid surface: gentle slosh, plus ripples where the stream lands.
       float hit = exp(-pow((px.x - 477.0) / 45.0, 2.0));
       float surface = uFillRow
@@ -228,7 +223,7 @@ const bodyVert = /* glsl */ `
 `;
 
 function BottleBillboard() {
-  const src = useTexture(TEASER_IMG);
+  const [src, maskSrc] = useTexture([TEASER_IMG, MASK_IMG]);
   const tex = useMemo(() => cutoutBottle(src.image as HTMLImageElement), [src]);
   const shadows = useMemo(
     () => ({
@@ -255,13 +250,14 @@ function BottleBillboard() {
         depthWrite: false,
         uniforms: {
           map: { value: tex.body },
+          mask: { value: maskSrc },
           uFillRow: { value: LIQUID.bottom },
           uTime: { value: 0 },
           uPour: { value: 0 },
           uOpacity: { value: 0 },
         },
       }),
-    [tex],
+    [tex, maskSrc],
   );
   useEffect(
     () => () => {
@@ -558,14 +554,9 @@ function logoCorner(w: number, h: number) {
 export const taglineEl: { current: HTMLElement | null } = { current: null };
 export const taglineTopEl: { current: HTMLElement | null } = { current: null };
 
-/**
- * "Coffee Without Compromise" rises onto the stone once the coffee is
- * pouring, and stays there until the cap is back on: then it hands over to
- * the tagline above the bottle (one fades out as the other fades in).
- */
-function taglineOpacity(t: number) {
-  const start = K.pourStart + K.dropTime + 0.3;
-  return smoothstep(start, start + 1.0, t) * (1 - smoothstep(K.screwEnd - 0.1, K.screwEnd + 0.6, t));
+/** "Coffee Without Compromise" on the stone is constantly visible. */
+function taglineOpacity(_t: number) {
+  return 1;
 }
 
 /** The tagline above the bottle appears once the cap is closed (taking over from the stone), and fades out with the bottle. */

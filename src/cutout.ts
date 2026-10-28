@@ -106,7 +106,7 @@ export const CAP_RECT = { x: 340, y: 14, w: 276, h: CAP_CUT_ROW - 14 };
 function toTexture(canvas: HTMLCanvasElement) {
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  tex.anisotropy = 16;
   tex.needsUpdate = true;
   return tex;
 }

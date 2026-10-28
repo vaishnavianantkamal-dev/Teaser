@@ -48,6 +48,7 @@ const dataUri = (rel, mime) =>
 const assets = {
   teaser: dataUri('gallery/teaser.webp', 'image/webp'),
   logo: dataUri('brand/logo.webp', 'image/webp'),
+  mask: dataUri('gallery/label_mask.webp', 'image/webp'),
 };
 
 // Favicon: just the round emblem, transparent around it.
