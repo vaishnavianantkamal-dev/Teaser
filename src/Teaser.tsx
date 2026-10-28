@@ -60,7 +60,7 @@ export default function Teaser() {
       */}
       <div className="pointer-events-none absolute inset-0 z-[3]">
         {/* Mobile portrait: First "Coffee Science", then "Coffee Without Compromise" tagline */}
-        <div className="absolute inset-x-0 bottom-[5vh] sm:bottom-[7vh] flex flex-col items-center gap-1.5 text-center animate-fade-up [@media(min-aspect-ratio:4/5)]:hidden">
+        <div className="absolute inset-x-0 bottom-[9.5vh] sm:bottom-[11.5vh] flex flex-col items-center gap-1.5 text-center animate-fade-up [@media(min-aspect-ratio:4/5)]:hidden">
           <h1
             data-text="Coffee Science"
             className="title-word-3d whitespace-nowrap pb-1 font-title text-[clamp(1.9rem,8.5vw,3.5rem)] font-medium leading-none"
