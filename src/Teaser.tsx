@@ -59,13 +59,18 @@ export default function Teaser() {
         portrait ones.
       */}
       <div className="pointer-events-none absolute inset-0 z-[3]">
-        <div className="absolute inset-x-0 bottom-[13vh] flex flex-col items-center gap-2 text-center animate-fade-up [@media(min-aspect-ratio:4/5)]:hidden">
+        {/* Mobile portrait: First "Coffee Science", then "Coffee Without Compromise" tagline */}
+        <div className="absolute inset-x-0 bottom-[5vh] sm:bottom-[7vh] flex flex-col items-center gap-1.5 text-center animate-fade-up [@media(min-aspect-ratio:4/5)]:hidden">
           <h1
             data-text="Coffee Science"
-            className="title-word-3d whitespace-nowrap pb-1 font-title text-[clamp(2rem,9.5vw,4rem)] font-medium leading-none"
+            className="title-word-3d whitespace-nowrap pb-1 font-title text-[clamp(1.9rem,8.5vw,3.5rem)] font-medium leading-none"
           >
             Coffee Science
           </h1>
+          <p className="tagline-shine whitespace-nowrap pl-[0.25em] font-title text-[clamp(0.72rem,3.2vw,1.05rem)] font-semibold uppercase tracking-[0.25em] mt-1.5">
+            Coffee Without Compromise
+          </p>
+          <div className="h-px w-20 bg-gradient-to-r from-transparent via-gold-400/80 to-transparent mt-0.5" />
         </div>
 
         <div className="absolute inset-y-0 left-0 hidden w-1/2 items-center justify-end pr-[clamp(6rem,11vw,12rem)] [@media(min-aspect-ratio:4/5)]:flex">
@@ -113,15 +118,14 @@ export default function Teaser() {
       </div>
 
       {/*
-        Tagline: rises onto the front of the stone while the coffee pours.
-        Its position and fade are driven from the 3D loop (see TaglineSync in
-        TeaserScene), so it stays on the stone at every screen size.
+        Tagline on the stone for desktop mode: rises onto the front of the stone.
+        Hidden on mobile portrait (where it sits neatly under Coffee Science).
       */}
       <div
         ref={(el) => {
           taglineEl.current = el;
         }}
-        className="pointer-events-none absolute inset-x-0 top-[88%] z-10 flex flex-col items-center gap-2 opacity-100"
+        className="pointer-events-none absolute inset-x-0 top-[88%] z-10 hidden flex-col items-center gap-2 opacity-100 [@media(min-aspect-ratio:4/5)]:flex"
       >
         <p className="tagline-shine whitespace-nowrap pl-[0.25em] font-title text-[clamp(0.85rem,min(1.75vw,3.2vh),1.6rem)] font-semibold uppercase tracking-[0.25em] sm:pl-[0.4em] sm:tracking-[0.4em]">
           Coffee Without Compromise
