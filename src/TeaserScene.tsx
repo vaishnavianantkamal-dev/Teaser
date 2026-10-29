@@ -171,16 +171,22 @@ const bodyFrag = /* glsl */ `
       if (px.y < surface) {
         // Empty glass: dark coffee becomes see-through, keeping natural glass reflections,
         // ambient tint, and a solid molded glass base so the bottle looks grounded and real.
-        float shine = smoothstep(0.015, 0.22, lum);
-        vec3 glass = mix(vec3(lum) * 1.25 + vec3(0.012, 0.02, 0.016), c.rgb, 0.35);
+        float shine = smoothstep(0.06, 0.55, lum);
+
+        // Suppress harsh white reflection dashes at the bottom heel contact line
+        float rimSuppress = smoothstep(1175.0, 1205.0, px.y);
+        shine *= (1.0 - rimSuppress * 0.9);
+
+        // Natural glass reflections: soft, warm, and integrated with photo tint (no bleached white halos)
+        vec3 glass = mix(c.rgb * 0.8 + vec3(0.015, 0.022, 0.018), vec3(0.85, 0.88, 0.85), shine * 0.5);
 
         // Natural smooth glass transparency
-        float glassAlpha = c.a * (0.24 + 0.76 * shine);
+        float glassAlpha = c.a * (0.30 + 0.70 * shine);
 
         // Solid, thick molded glass base under the bottle punt
         float baseGlass = smoothstep(1140.0, 1205.0, px.y);
         alpha = mix(glassAlpha, c.a * 0.92, baseGlass);
-        col = mix(glass, c.rgb * 0.9 + vec3(0.02, 0.025, 0.02), baseGlass * 0.8);
+        col = mix(glass, c.rgb * 0.85 + vec3(0.02, 0.025, 0.02), baseGlass * 0.8);
       } else {
         // Filled with milk coffee (colours are linear): creamy caramel brown,
         // shading darker towards the sides so it reads as a round body of
@@ -198,6 +204,8 @@ const bodyFrag = /* glsl */ `
         float ridge = smoothstep(0.7, 1.0, flute) * (0.4 + 0.6 * abs(side));
         float lights = exp(-pow((side + 0.56) / 0.07, 2.0)) * 0.9 + exp(-pow((side - 0.64) / 0.045, 2.0)) * 0.55;
         float shine = smoothstep(0.1, 0.5, lum);
+        float baseRim = smoothstep(1175.0, 1205.0, px.y);
+        shine *= (1.0 - baseRim * 0.85);
         col = milk * (1.0 - 0.3 * groove);
         col += vec3(0.85, 0.9, 0.88) * (lights * 0.45 + ridge * 0.12 + shine * shine * 0.3);
         // Thick, clear glass base under the liquid.
