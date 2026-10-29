@@ -48,14 +48,33 @@ function stoneMaps() {
   const [color, cctx] = mk();
   cctx.fillStyle = '#121110';
   cctx.fillRect(0, 0, S, S);
-  blots(cctx, 700, 4, 46, () => (r() < 0.65 ? `rgba(6,6,6,${0.1 + r() * 0.25})` : `rgba(60,56,52,${0.04 + r() * 0.08})`));
-  blots(cctx, 9000, 0.5, 1.8, () => (r() < 0.5 ? 'rgba(130,120,108,0.25)' : 'rgba(0,0,0,0.35)'));
+  blots(cctx, 150, 6, 40, () => (r() < 0.65 ? `rgba(6,6,6,${0.15 + r() * 0.25})` : `rgba(60,56,52,${0.06 + r() * 0.1})`));
+  const cImg = cctx.getImageData(0, 0, S, S);
+  const cd = cImg.data;
+  for (let i = 0; i < cd.length; i += 4) {
+    if (r() < 0.18) {
+      const v = r() < 0.5 ? -18 : 22;
+      cd[i] = Math.min(255, Math.max(0, cd[i] + v));
+      cd[i + 1] = Math.min(255, Math.max(0, cd[i + 1] + v));
+      cd[i + 2] = Math.min(255, Math.max(0, cd[i + 2] + v));
+    }
+  }
+  cctx.putImageData(cImg, 0, 0);
 
   const [bump, bctx] = mk();
   bctx.fillStyle = '#808080';
   bctx.fillRect(0, 0, S, S);
-  blots(bctx, 900, 3, 14, () => (r() < 0.5 ? `rgba(0,0,0,${0.08 + r() * 0.2})` : `rgba(255,255,255,${0.06 + r() * 0.16})`));
-  blots(bctx, 12000, 0.5, 2, () => (r() < 0.6 ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.3)'));
+  blots(bctx, 180, 4, 16, () => (r() < 0.5 ? `rgba(0,0,0,${0.1 + r() * 0.2})` : `rgba(255,255,255,${0.08 + r() * 0.18})`));
+  const bImg = bctx.getImageData(0, 0, S, S);
+  const bd = bImg.data;
+  for (let i = 0; i < bd.length; i += 4) {
+    if (r() < 0.22) {
+      const v = r() < 0.5 ? -35 : 35;
+      const val = Math.min(255, Math.max(0, bd[i] + v));
+      bd[i] = bd[i + 1] = bd[i + 2] = val;
+    }
+  }
+  bctx.putImageData(bImg, 0, 0);
 
   const [rough, rctx] = mk();
   rctx.fillStyle = '#f0f0f0';

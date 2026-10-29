@@ -49,6 +49,9 @@ const assets = {
   teaser: dataUri('gallery/teaser.webp', 'image/webp'),
   logo: dataUri('brand/logo.webp', 'image/webp'),
   mask: dataUri('gallery/label_mask.webp', 'image/webp'),
+  title3d: dataUri('brand/coffee-science-3d.png', 'image/png'),
+  coffee3d: dataUri('brand/coffee-word-3d.png', 'image/png'),
+  science3d: dataUri('brand/science-word-3d.png', 'image/png'),
 };
 
 // Favicon: just the round emblem, transparent around it.

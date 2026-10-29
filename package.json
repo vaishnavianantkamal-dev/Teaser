@@ -8,7 +8,7 @@
     "dev": "vite --port 3220",
     "build": "tsc && vite build",
     "preview": "vite preview --port 3220",
-    "build:standalone": "node scripts/build-standalone.mjs"
+    "build:standalone": "node --max-old-space-size=4096 scripts/build-standalone.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

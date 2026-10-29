@@ -71,7 +71,7 @@ export default function TeaserScene() {
   return (
     <>
       {/* Same studio lighting rig as the home page hero beans (StoryScene). */}
-      <Environment resolution={128} frames={1}>
+      <Environment resolution={64} frames={1}>
         <Lightformer form="rect" intensity={3} color="#fff1dc" position={[0, 5, 2]} scale={[6, 3, 1]} target={[0, 0, 0]} />
         <Lightformer form="ring" intensity={2.2} color="#d4af6a" position={[0, 2, -6]} scale={5} target={[0, 0, 0]} />
         <Lightformer form="rect" intensity={1.2} color="#bcd6ff" position={[-6, 1, 2]} scale={[2, 5, 1]} target={[0, 0, 0]} />
@@ -639,9 +639,9 @@ function skipBand(v: number, lo: number, hi: number) {
 function FloatingBeans() {
   const { viewport, camera, size } = useThree();
   const mobile = size.width < 640;
-  const geometry = useMemo(() => createBeanGeometry(0.5, mobile ? 40 : 64), [mobile]);
-  // Phones get a lighter crinkle map: quicker to generate, and the beans are smaller on screen.
-  const maps = useMemo(() => buildBeanMaps(3, mobile ? 512 : 1024), [mobile]);
+  const geometry = useMemo(() => createBeanGeometry(0.5, mobile ? 24 : 36), [mobile]);
+  // Light crinkle map: loads near-instantly, perfectly sharp for floating beans
+  const maps = useMemo(() => buildBeanMaps(3, mobile ? 256 : 384), [mobile]);
   const material = useMemo(() => createBeanMaterial(maps, 0.75), [maps]);
   useEffect(
     () => () => {

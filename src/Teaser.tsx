@@ -1,7 +1,7 @@
 import { Suspense, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { PerformanceMonitor } from '@react-three/drei';
-import { LOGO_IMG } from './assets';
+import { LOGO_IMG, TITLE_3D_IMG, COFFEE_3D_IMG, SCIENCE_3D_IMG } from './assets';
 import TeaserScene, { taglineEl, taglineTopEl } from './TeaserScene';
 
 // Wide layout from 4:5 up (matches PORTRAIT_ASPECT in TeaserScene).
@@ -59,39 +59,35 @@ export default function Teaser() {
         portrait ones.
       */}
       <div className="pointer-events-none absolute inset-0 z-[3]">
-        {/* Mobile portrait: First "Coffee Science", then "Coffee Without Compromise" tagline */}
-        <div className="absolute inset-x-0 bottom-[9.5vh] sm:bottom-[11.5vh] flex flex-col items-center gap-1.5 text-center animate-fade-up [@media(min-aspect-ratio:4/5)]:hidden">
-          <h1
-            data-text="Coffee Science"
-            className="title-word-3d whitespace-nowrap pb-1 font-title text-[clamp(1.9rem,8.5vw,3.5rem)] font-medium leading-none"
-          >
-            Coffee Science
-          </h1>
-          <p className="tagline-shine whitespace-nowrap pl-[0.25em] font-title text-[clamp(0.72rem,3.2vw,1.05rem)] font-semibold uppercase tracking-[0.25em] mt-1.5">
-            Coffee Without Compromise
-          </p>
-          <div className="h-px w-20 bg-gradient-to-r from-transparent via-gold-400/80 to-transparent mt-0.5" />
+        {/* Mobile portrait: Solid 3D Gold "COFFEE SCIENCE" lifted higher onto the stone */}
+        <div className="absolute inset-x-0 bottom-[14vh] sm:bottom-[16vh] flex flex-col items-center px-4 text-center animate-fade-up [@media(min-aspect-ratio:4/5)]:hidden">
+          <h1 className="sr-only">Coffee Science — Coffee Without Compromise</h1>
+          <img
+            src={TITLE_3D_IMG}
+            alt="Coffee Science — Coffee Without Compromise"
+            className="w-full max-w-[340px] sm:max-w-[420px] h-auto object-contain filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.95)] drop-shadow-[0_14px_28px_rgba(0,0,0,0.85)] select-none pointer-events-none"
+          />
         </div>
 
-        <div className="absolute inset-y-0 left-0 hidden w-1/2 items-center justify-end pr-[clamp(6rem,11vw,12rem)] [@media(min-aspect-ratio:4/5)]:flex">
+        {/* Desktop landscape: Split 3D Gold "COFFEE" and "SCIENCE" flanking the bottle */}
+        <div className="absolute inset-y-0 left-0 hidden w-1/2 items-center justify-end pr-[clamp(4.5rem,9.5vw,11rem)] [@media(min-aspect-ratio:4/5)]:flex">
           <div className="flex flex-col items-end animate-fade-up" style={{ animationDelay: '0.3s' }}>
-            <h1
-              data-text="Coffee"
-              className="title-word-3d pb-[0.12em] font-title text-[clamp(3.5rem,min(8.2vw,17vh),9rem)] font-medium leading-[0.9]"
-            >
-              Coffee
-            </h1>
+            <h1 className="sr-only">Coffee</h1>
+            <img
+              src={COFFEE_3D_IMG}
+              alt="Coffee"
+              className="w-[clamp(14rem,22vw,25rem)] h-auto object-contain filter drop-shadow-[0_6px_10px_rgba(0,0,0,0.95)] drop-shadow-[0_18px_36px_rgba(0,0,0,0.9)] select-none pointer-events-none"
+            />
           </div>
         </div>
-        <div className="absolute inset-y-0 right-0 hidden w-1/2 items-center justify-start pl-[clamp(6rem,11vw,12rem)] [@media(min-aspect-ratio:4/5)]:flex">
+        <div className="absolute inset-y-0 right-0 hidden w-1/2 items-center justify-start pl-[clamp(4.5rem,9.5vw,11rem)] [@media(min-aspect-ratio:4/5)]:flex">
           <div className="flex flex-col items-start animate-fade-up" style={{ animationDelay: '0.5s' }}>
-            <p
-              aria-hidden
-              data-text="Science"
-              className="title-word-3d pb-[0.12em] font-title text-[clamp(3.5rem,min(8.2vw,17vh),9rem)] font-medium leading-[0.9]"
-            >
-              Science
-            </p>
+            <p aria-hidden className="sr-only">Science</p>
+            <img
+              src={SCIENCE_3D_IMG}
+              alt="Science"
+              className="w-[clamp(17rem,27vw,30rem)] h-auto object-contain filter drop-shadow-[0_6px_10px_rgba(0,0,0,0.95)] drop-shadow-[0_18px_36px_rgba(0,0,0,0.9)] select-none pointer-events-none"
+            />
           </div>
         </div>
       </div>
