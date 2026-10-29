@@ -114,7 +114,7 @@ export function cutoutBottle(image: HTMLImageElement | ImageBitmap) {
 }
 
 /** Underside of the bottle in teaser.webp pixels: centre row, half-width and how far the edges curve up. */
-export const BASE = { cx: 470, halfW: 185, y: 1208, curve: 20 };
+export const BASE = { cx: 475, halfW: 200, y: 1210, curve: 16 };
 
 /** Crop of the gold cap in teaser.webp pixels. */
 export const CAP_RECT = { x: 340, y: 14, w: 276, h: CAP_CUT_ROW - 14 };

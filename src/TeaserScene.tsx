@@ -204,8 +204,8 @@ const bodyFrag = /* glsl */ `
         float ridge = smoothstep(0.7, 1.0, flute) * (0.4 + 0.6 * abs(side));
         float lights = exp(-pow((side + 0.56) / 0.07, 2.0)) * 0.9 + exp(-pow((side - 0.64) / 0.045, 2.0)) * 0.55;
         float shine = smoothstep(0.1, 0.5, lum);
-        float baseRim = smoothstep(1175.0, 1205.0, px.y);
-        shine *= (1.0 - baseRim * 0.85);
+        float baseGlintSuppress = smoothstep(1145.0, 1185.0, px.y);
+        shine *= (1.0 - baseGlintSuppress);
         col = milk * (1.0 - 0.3 * groove);
         col += vec3(0.85, 0.9, 0.88) * (lights * 0.45 + ridge * 0.12 + shine * shine * 0.3);
         // Thick, clear glass base under the liquid.
