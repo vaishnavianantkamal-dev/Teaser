@@ -64,7 +64,7 @@ export function cutoutBottle(image: HTMLImageElement | ImageBitmap) {
     if (y < h - 1) seed(x, y + 1);
   }
 
-  // Hard mask → alpha. Also trim along the curved underside of the glass:
+  // Hard mask → alpha. Smoothly trim along the curved underside of the glass:
   // below it is only the photographed floor and its reflections, which read
   // as a muddy blob once the bottle sits on the 3D scene (a proper shadow is
   // drawn there instead).
@@ -75,34 +75,41 @@ export function cutoutBottle(image: HTMLImageElement | ImageBitmap) {
     if (a && y > 1150) {
       const u = (x - BASE.cx) / BASE.halfW;
       const edge = BASE.y - BASE.curve * u * u;
-      a = Math.round(255 * Math.min(1, Math.max(0, (edge - y) / 2.5)));
+      a = Math.round(255 * Math.min(1, Math.max(0, (edge - y) / 6.0)));
     }
     d[p * 4 + 3] = a;
   }
-  ctx.putImageData(img, 0, 0);
 
-  // Feather the edge a touch so the silhouette doesn't look stencilled.
-  const soft = document.createElement('canvas');
-  soft.width = w;
-  soft.height = h;
-  const sctx = soft.getContext('2d')!;
-  sctx.filter = 'blur(1.2px)';
-  sctx.drawImage(canvas, 0, 0);
-  sctx.filter = 'none';
-  sctx.globalCompositeOperation = 'source-atop';
-  sctx.drawImage(canvas, 0, 0);
+  // Soft 1px anti-alias along silhouette edge only, preserving internal sharpness and label quality.
+  const aCopy = new Uint8Array(w * h);
+  for (let p = 0; p < w * h; p++) aCopy[p] = d[p * 4 + 3];
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const p = y * w + x;
+      if (aCopy[p] === 255) {
+        if (aCopy[p - 1] === 0 || aCopy[p + 1] === 0 || aCopy[p - w] === 0 || aCopy[p + w] === 0) {
+          d[p * 4 + 3] = 190;
+        }
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
 
   // The original photographed cap, cropped out so it can lift off on its own.
   const cap = document.createElement('canvas');
   cap.width = CAP_RECT.w;
   cap.height = CAP_RECT.h;
-  cap.getContext('2d')!.drawImage(soft, CAP_RECT.x, CAP_RECT.y, CAP_RECT.w, CAP_RECT.h, 0, 0, CAP_RECT.w, CAP_RECT.h);
+  cap.getContext('2d')!.drawImage(canvas, CAP_RECT.x, CAP_RECT.y, CAP_RECT.w, CAP_RECT.h, 0, 0, CAP_RECT.w, CAP_RECT.h);
 
   // Bottle body without the cap.
-  sctx.globalCompositeOperation = 'source-over';
-  sctx.clearRect(0, 0, w, CAP_CUT_ROW);
+  const bodyCanvas = document.createElement('canvas');
+  bodyCanvas.width = w;
+  bodyCanvas.height = h;
+  const bctx = bodyCanvas.getContext('2d')!;
+  bctx.drawImage(canvas, 0, 0);
+  bctx.clearRect(0, 0, w, CAP_CUT_ROW);
 
-  cachedResult = { body: toTexture(soft), cap: toTexture(cap) };
+  cachedResult = { body: toTexture(bodyCanvas), cap: toTexture(cap) };
   return cachedResult;
 }
 
@@ -116,6 +123,9 @@ function toTexture(canvas: HTMLCanvasElement) {
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 16;
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
   tex.needsUpdate = true;
   return tex;
 }

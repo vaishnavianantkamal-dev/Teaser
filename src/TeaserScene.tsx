@@ -167,17 +167,20 @@ const bodyFrag = /* glsl */ `
         + hit * uPour * (3.0 + sin(uTime * 15.0) * 2.5);
 
       float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
-      float aL = texture2D(map, vUv - vec2(7.0 / IMG.x, 0.0)).a;
-      float aR = texture2D(map, vUv + vec2(7.0 / IMG.x, 0.0)).a;
-      float edge = 1.0 - min(aL, aR);
 
       if (px.y < surface) {
-        // Empty glass: dark coffee becomes see-through, reflections and the
-        // silhouette edge stay.
+        // Empty glass: dark coffee becomes see-through, keeping natural glass reflections,
+        // ambient tint, and a solid molded glass base so the bottle looks grounded and real.
         float shine = smoothstep(0.015, 0.22, lum);
-        vec3 glass = mix(vec3(lum) * 1.25 + vec3(0.012, 0.02, 0.016), c.rgb, 0.3);
-        col = mix(glass, vec3(0.42, 0.48, 0.45), edge * 0.35);
-        alpha = c.a * max(0.07 + 0.93 * shine, edge * 0.75);
+        vec3 glass = mix(vec3(lum) * 1.25 + vec3(0.012, 0.02, 0.016), c.rgb, 0.35);
+
+        // Natural smooth glass transparency
+        float glassAlpha = c.a * (0.24 + 0.76 * shine);
+
+        // Solid, thick molded glass base under the bottle punt
+        float baseGlass = smoothstep(1140.0, 1205.0, px.y);
+        alpha = mix(glassAlpha, c.a * 0.92, baseGlass);
+        col = mix(glass, c.rgb * 0.9 + vec3(0.02, 0.025, 0.02), baseGlass * 0.8);
       } else {
         // Filled with milk coffee (colours are linear): creamy caramel brown,
         // shading darker towards the sides so it reads as a round body of
@@ -197,9 +200,8 @@ const bodyFrag = /* glsl */ `
         float shine = smoothstep(0.1, 0.5, lum);
         col = milk * (1.0 - 0.3 * groove);
         col += vec3(0.85, 0.9, 0.88) * (lights * 0.45 + ridge * 0.12 + shine * shine * 0.3);
-        col = mix(col, vec3(0.012, 0.022, 0.016) + vec3(lum) * 0.8, edge * 0.7);
         // Thick, clear glass base under the liquid.
-        float base = smoothstep(1150.0, 1195.0, px.y);
+        float base = smoothstep(1140.0, 1200.0, px.y);
         col = mix(col, vec3(0.02, 0.03, 0.025) + vec3(0.7, 0.78, 0.74) * shine * 0.7 + milk * 0.25, base * 0.7);
         if (px.y < surface + 10.0) {
           // Pale foam line at the top of the milk coffee.

@@ -5,7 +5,7 @@ import { LOGO_IMG, TITLE_3D_IMG, COFFEE_3D_IMG, SCIENCE_3D_IMG } from './assets'
 import TeaserScene, { taglineEl, taglineTopEl } from './TeaserScene';
 
 // Wide layout from 4:5 up (matches PORTRAIT_ASPECT in TeaserScene).
-const MAX_DPR = 1.75;
+const MAX_DPR = 2.5;
 
 /**
  * Standalone "Something Brewing" teaser page. Single fixed camera view:
@@ -14,8 +14,8 @@ const MAX_DPR = 1.75;
  * same forest-green backdrop as the home page hero.
  */
 export default function Teaser() {
-  // Sharp on capable screens; drops resolution if the frame rate sags.
-  const [dpr, setDpr] = useState(() => Math.min(window.devicePixelRatio || 1, MAX_DPR));
+  // Ultra-sharp on retina screens; never drops below 1.75 on mobile so labels stay crisp
+  const [dpr, setDpr] = useState(() => Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2, MAX_DPR));
 
   return (
     <main className="relative h-[100svh] w-full overflow-hidden bg-forest-950">
@@ -41,8 +41,8 @@ export default function Teaser() {
           gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         >
           <PerformanceMonitor
-            onDecline={() => setDpr(1)}
-            onIncline={() => setDpr(Math.min(window.devicePixelRatio || 1, MAX_DPR))}
+            onDecline={() => setDpr((prev) => Math.max(1.75, prev * 0.9))}
+            onIncline={() => setDpr(Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 2 : 2, MAX_DPR))}
           />
           <Suspense fallback={null}>
             <TeaserScene />
