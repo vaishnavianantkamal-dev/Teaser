@@ -59,13 +59,13 @@ export default function Teaser() {
         portrait ones.
       */}
       <div className="pointer-events-none absolute inset-0 z-[3]">
-        {/* Mobile portrait: Solid 3D Gold "COFFEE SCIENCE" lifted higher onto the stone */}
-        <div className="absolute inset-x-0 bottom-[14vh] sm:bottom-[16vh] flex flex-col items-center px-4 text-center animate-fade-up [@media(min-aspect-ratio:4/5)]:hidden">
+        {/* Mobile portrait: Solid 3D Gold "COFFEE SCIENCE" sized to sit completely inside the stone boundaries */}
+        <div className="absolute inset-x-0 bottom-[12.5vh] sm:bottom-[14vh] flex flex-col items-center px-6 text-center animate-fade-up [@media(min-aspect-ratio:4/5)]:hidden">
           <h1 className="sr-only">Coffee Science — Coffee Without Compromise</h1>
           <img
             src={TITLE_3D_IMG}
             alt="Coffee Science — Coffee Without Compromise"
-            className="w-full max-w-[340px] sm:max-w-[420px] h-auto object-contain filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.95)] drop-shadow-[0_14px_28px_rgba(0,0,0,0.85)] select-none pointer-events-none"
+            className="w-[66vw] max-w-[260px] sm:max-w-[310px] h-auto object-contain filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.95)] drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] select-none pointer-events-none"
           />
         </div>
 
